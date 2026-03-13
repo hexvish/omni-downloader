@@ -221,10 +221,10 @@
                     });
                     formatList.style.display = 'block';
                 } else {
-                    showStatus(data.error || 'Failed to fetch formats', 'error');
+                    showStatus(data.message || data.error || 'Failed to fetch formats', 'error');
                 }
             } catch (err) {
-                showStatus('Connection error', 'error');
+                showStatus('Connection error. Is the server running?', 'error');
             } finally {
                 setLoading(false);
             }
@@ -254,7 +254,7 @@
                     a.click();
                     document.body.removeChild(a);
                 } else {
-                    showStatus(data.error || 'Download failed', 'error');
+                    showStatus(data.message || data.error || 'Download failed', 'error');
                 }
             } catch (err) {
                 showStatus('Error starting download', 'error');
