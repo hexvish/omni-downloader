@@ -66,27 +66,13 @@ def fetch_formats():
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # First attempt at extraction
             try:
                 info = ydl.extract_info(url, download=False)
             except Exception as e:
-                # Basic fallback for direct image links or problematic extractors
-                print(f">>> Extraction attempt 1 failed: {str(e)}")
-                if any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp']):
-                    return jsonify({
-                        'success': True,
-                        'title': 'Direct Image',
-                        'formats': [{
-                            'id': 'original_image',
-                            'label': 'Image | Original | Direct Download',
-                            'type': 'image'
-                        }],
-                        'preview_url': url,
-                        'is_video': False
-                    })
-                return jsonify({'status': 'error', 'message': 'Unable to extract downloadable media from this URL.'}), 500
+                print(f">>> Extraction failed: {str(e)}")
+                return jsonify({'status': 'error', 'message': 'Unable to extract downloadable video or audio from this URL.'}), 500
             
-            # Handle entries (playlists/carousels) by taking the first item if needed
+            # Handle entries (playlists) by taking the first item
             if 'entries' in info and not info.get('formats'):
                 entries = [e for e in info['entries'] if e]
                 if entries:
@@ -95,22 +81,9 @@ def fetch_formats():
             formats = info.get('formats', [])
             clean_formats = []
             resolutions = {}
-            image_formats = []
             
-            # Stable Preview Logic: Always favor a high-res thumbnail
-            preview_url = info.get('thumbnail') or info.get('url')
-            
-            # Identify if the main source is an image
-            is_video = True
-            ext_main = (info.get('ext') or '').lower()
-            if ext_main in ['jpg', 'jpeg', 'png', 'webp'] or info.get('vcodec') == 'none':
-                is_video = False
-                if not formats:
-                    image_formats.append({
-                        'id': 'original',
-                        'label': f"Image | {ext_main.upper() or 'Original'} | Direct Download",
-                        'type': 'image'
-                    })
+            # Stable Preview: Favor high-res thumbnail
+            preview_url = info.get('thumbnail')
 
             for f in formats:
                 height = f.get('height')
@@ -118,7 +91,7 @@ def fetch_formats():
                 vcodec = f.get('vcodec')
                 filesize = f.get('filesize') or f.get('filesize_approx')
                 
-                # Video resolutions
+                # Filter for Video resolutions
                 if height and vcodec != 'none':
                     res_str = f"{height}p"
                     if res_str not in resolutions or (filesize and (not resolutions[res_str].get('size') or filesize > resolutions[res_str]['size'])):
@@ -128,16 +101,6 @@ def fetch_formats():
                             'size': filesize,
                             'height': height
                         }
-                
-                # Image formats found in metadata
-                elif ext in ['jpg', 'jpeg', 'png', 'webp'] and (vcodec == 'none' or not vcodec):
-                    if not any(img['id'] == f.get('format_id') for img in image_formats):
-                        size_mb = f"{round(filesize / (1024*1024), 2)} MB" if filesize else "N/A"
-                        image_formats.append({
-                            'id': f.get('format_id') or 'original',
-                            'label': f"Image | {ext.upper()} | {size_mb}",
-                            'type': 'image'
-                        })
 
             # Sort and add video formats
             sorted_res = sorted(resolutions.values(), key=lambda x: x['height'], reverse=True)
@@ -150,11 +113,8 @@ def fetch_formats():
                     'height': item['height']
                 })
 
-            # Add Image formats
-            clean_formats.extend(image_formats)
-
-            # Add Audio option ONLY if video was found
-            if sorted_res:
+            # Add Audio option if video/audio was found
+            if sorted_res or any(f.get('acodec') != 'none' for f in formats):
                 clean_formats.append({
                     'id': 'audio',
                     'label': 'Audio Only | mp3 | Best Quality',
@@ -162,15 +122,14 @@ def fetch_formats():
                 })
 
             if not clean_formats:
-                return jsonify({'status': 'error', 'message': 'Unable to find any downloadable files for this URL.'}), 500
+                return jsonify({'status': 'error', 'message': 'No downloadable video or audio formats found for this URL.'}), 500
 
             print(f">>> Extraction successful: {info.get('title')}")
             return jsonify({
                 'success': True,
                 'title': info.get('title', 'Media Content'),
                 'formats': clean_formats,
-                'preview_url': preview_url,
-                'is_video': is_video
+                'preview_url': preview_url
             })
 
     except Exception as e:
@@ -189,7 +148,7 @@ def download():
     print(f">>> Download started: {url} ({format_id})")
     
     random_id = secrets.token_hex(4)
-    outtmpl = os.path.join(DOWNLOAD_FOLDER, f'%(title)u__{random_id}.%(ext)s') # Using %u for safe filenames
+    outtmpl = os.path.join(DOWNLOAD_FOLDER, f'%(title)u__{random_id}.%(ext)s')
 
     common_opts = {
         'outtmpl': outtmpl,
@@ -209,11 +168,6 @@ def download():
                 'preferredquality': '192',
             }],
         }
-    elif download_type == 'image':
-        ydl_opts = {
-            **common_opts,
-            'format': format_id if format_id not in ['original', 'original_image'] else 'best',
-        }
     else:
         try:
             height = int(format_id.replace('p', ''))
@@ -230,30 +184,22 @@ def download():
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # Pinterest/direct image fallback
-            if download_type == 'image' and format_id == 'original_image':
-                # Manually download if it's a direct URL
-                filename = f"media__{random_id}.jpg"
-                path = os.path.join(DOWNLOAD_FOLDER, filename)
-                subprocess.check_call(["curl", "-L", "-o", path, url])
-                expected_filename = path
-            else:
-                info = ydl.extract_info(url, download=True)
-                
-                # Check for entries in case it's a playlist item
-                if 'entries' in info:
-                    info = info['entries'][0]
+            info = ydl.extract_info(url, download=True)
+            
+            # Check for entries in case it's a playlist item
+            if 'entries' in info:
+                info = info['entries'][0]
 
-                if download_type == 'audio':
-                    expected_filename = ydl.prepare_filename(info).rsplit('.', 1)[0] + '.mp3'
-                else:
-                    expected_filename = ydl.prepare_filename(info)
-                    if not os.path.exists(expected_filename):
-                        base = expected_filename.rsplit('.', 1)[0]
-                        for ext in ['mp4', 'mkv', 'webm', 'jpg', 'jpeg', 'png', 'webp']:
-                            if os.path.exists(f"{base}.{ext}"):
-                                expected_filename = f"{base}.{ext}"
-                                break
+            if download_type == 'audio':
+                expected_filename = ydl.prepare_filename(info).rsplit('.', 1)[0] + '.mp3'
+            else:
+                expected_filename = ydl.prepare_filename(info)
+                if not os.path.exists(expected_filename):
+                    base = expected_filename.rsplit('.', 1)[0]
+                    for ext in ['mp4', 'mkv', 'webm']:
+                        if os.path.exists(f"{base}.{ext}"):
+                            expected_filename = f"{base}.{ext}"
+                            break
 
             # Emergency locator
             if not os.path.exists(expected_filename):
