@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Social Media Downloader</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text: #f8fafc;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        h1 {
+            font-weight: 600;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 2.5rem 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            margin-bottom: 2rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--glass-border);
+            background: rgba(15, 23, 42, 0.5);
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+
+        button {
+            width: 100%;
+            padding: 1rem;
+            border-radius: 12px;
+            border: none;
+            background: var(--primary);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        button:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+        button:disabled { opacity: 0.7; cursor: not-allowed; }
+
+        .status { margin-top: 1.5rem; font-size: 0.9rem; min-height: 1.2rem; }
+        .status.error { color: #fb7185; }
+        .status.success { color: #34d399; }
+        .status.loading { color: #94a3b8; }
+
+        .format-list {
+            margin-top: 1.5rem;
+            text-align: left;
+            display: none;
+        }
+
+        .format-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .format-item:hover { background: rgba(255, 255, 255, 0.08); }
+
+        .format-info { font-size: 0.95rem; font-weight: 400; }
+
+        .dl-icon-btn {
+            background: var(--primary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            width: auto;
+        }
+
+        .loader {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #fff;
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            animation: rotation 1s linear infinite;
+        }
+
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .platforms {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            opacity: 0.4;
+            flex-wrap: wrap;
+            font-size: 0.8rem;
+        }
+        .platform-tag { background: var(--glass); padding: 0.4rem 0.8rem; border-radius: 100px; border: 1px solid var(--glass-border); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Downloader</h1>
+        <div class="card">
+            <input type="text" id="urlInput" placeholder="Paste social media URL here..." autocomplete="off">
+            <button id="fetchBtn">
+                <span id="fetchBtnText">Fetch Formats</span>
+                <span id="fetchBtnLoader" class="loader" style="display: none;"></span>
+            </button>
+            <div id="status" class="status"></div>
+
+            <div id="formatList" class="format-list">
+                <h3 id="mediaTitle" style="font-size: 1rem; margin-bottom: 1rem; color: #818cf8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></h3>
+                <div id="formatContainer"></div>
+            </div>
+        </div>
+
+        <div class="platforms">
+            <span class="platform-tag">Instagram</span>
+            <span class="platform-tag">TikTok</span>
+            <span class="platform-tag">X / Twitter</span>
+            <span class="platform-tag">Facebook</span>
+            <span class="platform-tag">Pinterest</span>
+        </div>
+    </div>
+
+    <script>
+        const urlInput = document.getElementById('urlInput');
+        const fetchBtn = document.getElementById('fetchBtn');
+        const fetchBtnText = document.getElementById('fetchBtnText');
+        const fetchBtnLoader = document.getElementById('fetchBtnLoader');
+        const status = document.getElementById('status');
+        const formatList = document.getElementById('formatList');
+        const formatContainer = document.getElementById('formatContainer');
+        const mediaTitle = document.getElementById('mediaTitle');
+
+        async function handleFetch() {
+            const url = urlInput.value.trim();
+            if (!url) { return showStatus('Please paste a URL first', 'error'); }
+
+            setLoading(true);
+            showStatus('Fetching available formats...', 'loading');
+            formatList.style.display = 'none';
+            formatContainer.innerHTML = '';
+
+            try {
+                const formData = new FormData();
+                formData.append('url', url);
+
+                const response = await fetch('/fetch_formats', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus('Choose your format', 'success');
+                    mediaTitle.textContent = data.title;
+                    
+                    data.formats.forEach(format => {
+                        const item = document.createElement('div');
+                        item.className = 'format-item';
+                        item.innerHTML = `
+                            <div class="format-info">${format.label}</div>
+                            <button class="dl-icon-btn" onclick="startDownload('${url}', '${format.id}', '${format.type}', this)">Download</button>
+                        `;
+                        formatContainer.appendChild(item);
+                    });
+                    formatList.style.display = 'block';
+                } else {
+                    showStatus(data.error || 'Failed to fetch formats', 'error');
+                }
+            } catch (err) {
+                showStatus('Connection error', 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function startDownload(url, formatId, type, btn) {
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+            showStatus('Starting download, please wait...', 'loading');
+
+            try {
+                const formData = new FormData();
+                formData.append('url', url);
+                formData.append('format_id', formatId);
+                formData.append('type', type);
+
+                const response = await fetch('/download', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus('Download successful!', 'success');
+                    const a = document.createElement('a');
+                    a.href = data.download_url;
+                    a.download = data.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                } else {
+                    showStatus(data.error || 'Download failed', 'error');
+                }
+            } catch (err) {
+                showStatus('Error starting download', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        function setLoading(isLoading) {
+            fetchBtn.disabled = isLoading;
+            fetchBtnText.style.display = isLoading ? 'none' : 'inline';
+            fetchBtnLoader.style.display = isLoading ? 'inline-block' : 'none';
+        }
+
+        function showStatus(msg, type) {
+            status.textContent = msg;
+            status.className = 'status ' + type;
+        }
+
+        fetchBtn.addEventListener('click', handleFetch);
+        urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleFetch(); });
+    </script>
+</body>
+</html>
