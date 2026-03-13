@@ -96,10 +96,36 @@
         button:active { transform: translateY(0); }
         button:disabled { opacity: 0.7; cursor: not-allowed; }
 
+        .secondary-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+        }
+        .secondary-btn:hover { background: rgba(255, 255, 255, 0.1); }
+
+        .button-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 1rem;
+        }
+
         .status { margin-top: 1.5rem; font-size: 0.9rem; min-height: 1.2rem; }
         .status.error { color: #fb7185; }
         .status.success { color: #34d399; }
         .status.loading { color: #94a3b8; }
+
+        .preview-container {
+            width: 100%;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+        }
+        .video-preview { width: 100%; max-height: 400px; display: block; }
+        .image-preview { max-width: 100%; max-height: 400px; object-fit: contain; }
 
         .format-list {
             margin-top: 1.5rem;
@@ -159,13 +185,18 @@
         <h1>Downloader</h1>
         <div class="card">
             <input type="text" id="urlInput" placeholder="Paste social media URL here..." autocomplete="off">
-            <button id="fetchBtn">
-                <span id="fetchBtnText">Fetch Formats</span>
-                <span id="fetchBtnLoader" class="loader" style="display: none;"></span>
-            </button>
+            <div class="button-row">
+                <button id="fetchBtn">
+                    <span id="fetchBtnText">Fetch Formats</span>
+                    <span id="fetchBtnLoader" class="loader" style="display: none;"></span>
+                </button>
+                <button id="clearBtn" class="secondary-btn">Clear</button>
+            </div>
+            
             <div id="status" class="status"></div>
 
             <div id="formatList" class="format-list">
+                <div id="previewContainer" class="preview-container"></div>
                 <h3 id="mediaTitle" style="font-size: 1rem; margin-bottom: 1rem; color: #818cf8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></h3>
                 <div id="formatContainer"></div>
             </div>
@@ -185,10 +216,24 @@
         const fetchBtn = document.getElementById('fetchBtn');
         const fetchBtnText = document.getElementById('fetchBtnText');
         const fetchBtnLoader = document.getElementById('fetchBtnLoader');
+        const clearBtn = document.getElementById('clearBtn');
         const status = document.getElementById('status');
         const formatList = document.getElementById('formatList');
         const formatContainer = document.getElementById('formatContainer');
         const mediaTitle = document.getElementById('mediaTitle');
+        const previewContainer = document.getElementById('previewContainer');
+
+        function clearUI() {
+            urlInput.value = '';
+            status.style.display = 'none';
+            status.textContent = '';
+            formatList.style.display = 'none';
+            formatContainer.innerHTML = '';
+            previewContainer.innerHTML = '';
+            mediaTitle.textContent = '';
+        }
+
+        clearBtn.addEventListener('click', clearUI);
 
         async function handleFetch() {
             const url = urlInput.value.trim();
@@ -198,6 +243,7 @@
             showStatus('Fetching available formats...', 'loading');
             formatList.style.display = 'none';
             formatContainer.innerHTML = '';
+            previewContainer.innerHTML = '';
 
             try {
                 const formData = new FormData();
@@ -210,6 +256,22 @@
                     showStatus('Choose your format', 'success');
                     mediaTitle.textContent = data.title;
                     
+                    // Handle Preview
+                    if (data.preview_url) {
+                        if (data.is_video) {
+                            const video = document.createElement('video');
+                            video.src = data.preview_url;
+                            video.controls = true;
+                            video.className = 'video-preview';
+                            previewContainer.appendChild(video);
+                        } else {
+                            const img = document.createElement('img');
+                            img.src = data.preview_url;
+                            img.className = 'image-preview';
+                            previewContainer.appendChild(img);
+                        }
+                    }
+
                     data.formats.forEach(format => {
                         const item = document.createElement('div');
                         item.className = 'format-item';
@@ -271,6 +333,7 @@
         }
 
         function showStatus(msg, type) {
+            status.style.display = 'block';
             status.textContent = msg;
             status.className = 'status ' + type;
         }
