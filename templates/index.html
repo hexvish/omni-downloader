@@ -126,7 +126,7 @@
         }
         .video-preview { width: 100%; max-height: 400px; display: block; }
         .image-preview { max-width: 100%; max-height: 400px; object-fit: contain; }
-
+        
         .format-list {
             margin-top: 1.5rem;
             text-align: left;
@@ -256,20 +256,12 @@
                     showStatus('Choose your format', 'success');
                     mediaTitle.textContent = data.title;
                     
-                    // Handle Preview
+                    // Handle Preview: Always use image for stability
                     if (data.preview_url) {
-                        if (data.is_video) {
-                            const video = document.createElement('video');
-                            video.src = data.preview_url;
-                            video.controls = true;
-                            video.className = 'video-preview';
-                            previewContainer.appendChild(video);
-                        } else {
-                            const img = document.createElement('img');
-                            img.src = data.preview_url;
-                            img.className = 'image-preview';
-                            previewContainer.appendChild(img);
-                        }
+                        const img = document.createElement('img');
+                        img.src = data.preview_url;
+                        img.className = 'image-preview';
+                        previewContainer.appendChild(img);
                     }
 
                     data.formats.forEach(format => {

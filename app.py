@@ -18,6 +18,7 @@ def check_for_updates():
     """Check and update yt-dlp on startup."""
     print(">>> yt-dlp update check started...")
     try:
+        # Using -U to ensure it's the latest version
         subprocess.check_call([sys.executable, "-m", "pip", "install", "-U", "yt-dlp"])
         print(">>> yt-dlp is up to date.")
     except Exception as e:
@@ -60,39 +61,60 @@ def fetch_formats():
         'no_warnings': True,
         'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'socket_timeout': 15,
-        'extract_flat': False, # Ensure we get actual format data
+        'extract_flat': False,
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # First attempt at extraction
             try:
                 info = ydl.extract_info(url, download=False)
             except Exception as e:
-                print(f">>> Extraction error: {str(e)}")
+                # Basic fallback for direct image links or problematic extractors
+                print(f">>> Extraction attempt 1 failed: {str(e)}")
+                if any(ext in url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp']):
+                    return jsonify({
+                        'success': True,
+                        'title': 'Direct Image',
+                        'formats': [{
+                            'id': 'original_image',
+                            'label': 'Image | Original | Direct Download',
+                            'type': 'image'
+                        }],
+                        'preview_url': url,
+                        'is_video': False
+                    })
                 return jsonify({'status': 'error', 'message': 'Unable to extract downloadable media from this URL.'}), 500
             
-            formats = info.get('formats', [])
+            # Handle entries (playlists/carousels) by taking the first item if needed
+            if 'entries' in info and not info.get('formats'):
+                entries = [e for e in info['entries'] if e]
+                if entries:
+                    info = entries[0]
             
-            # Identify media types and generate formats
+            formats = info.get('formats', [])
             clean_formats = []
             resolutions = {}
             image_formats = []
             
-            # Preview logic
-            preview_url = info.get('thumbnail') or info.get('url') # 'url' might be direct link for some extractors
-            is_direct_image = False
+            # Stable Preview Logic: Always favor a high-res thumbnail
+            preview_url = info.get('thumbnail') or info.get('url')
             
-            if not formats and info.get('url') and any(ext in info.get('url').lower() for ext in ['.jpg', '.jpeg', '.png', '.webp']):
-                is_direct_image = True
-                image_formats.append({
-                    'id': 'original_image',
-                    'label': f"Image | {info.get('ext', 'original')} | Direct Download",
-                    'type': 'image'
-                })
+            # Identify if the main source is an image
+            is_video = True
+            ext_main = (info.get('ext') or '').lower()
+            if ext_main in ['jpg', 'jpeg', 'png', 'webp'] or info.get('vcodec') == 'none':
+                is_video = False
+                if not formats:
+                    image_formats.append({
+                        'id': 'original',
+                        'label': f"Image | {ext_main.upper() or 'Original'} | Direct Download",
+                        'type': 'image'
+                    })
 
             for f in formats:
                 height = f.get('height')
-                ext = f.get('ext', 'mp4')
+                ext = (f.get('ext') or '').lower()
                 vcodec = f.get('vcodec')
                 filesize = f.get('filesize') or f.get('filesize_approx')
                 
@@ -107,14 +129,15 @@ def fetch_formats():
                             'height': height
                         }
                 
-                # Image support (if yt-dlp identifies image formats)
-                elif ext in ['jpg', 'jpeg', 'png', 'webp'] and vcodec == 'none':
-                    size_mb = f"{round(filesize / (1024*1024), 2)} MB" if filesize else "N/A"
-                    image_formats.append({
-                        'id': f.get('format_id'),
-                        'label': f"Image | {ext.upper()} | {size_mb}",
-                        'type': 'image'
-                    })
+                # Image formats found in metadata
+                elif ext in ['jpg', 'jpeg', 'png', 'webp'] and (vcodec == 'none' or not vcodec):
+                    if not any(img['id'] == f.get('format_id') for img in image_formats):
+                        size_mb = f"{round(filesize / (1024*1024), 2)} MB" if filesize else "N/A"
+                        image_formats.append({
+                            'id': f.get('format_id') or 'original',
+                            'label': f"Image | {ext.upper()} | {size_mb}",
+                            'type': 'image'
+                        })
 
             # Sort and add video formats
             sorted_res = sorted(resolutions.values(), key=lambda x: x['height'], reverse=True)
@@ -130,7 +153,7 @@ def fetch_formats():
             # Add Image formats
             clean_formats.extend(image_formats)
 
-            # Add Audio option if video was found
+            # Add Audio option ONLY if video was found
             if sorted_res:
                 clean_formats.append({
                     'id': 'audio',
@@ -139,26 +162,26 @@ def fetch_formats():
                 })
 
             if not clean_formats:
-                return jsonify({'status': 'error', 'message': 'Unable to extract downloadable media from this URL.'}), 500
+                return jsonify({'status': 'error', 'message': 'Unable to find any downloadable files for this URL.'}), 500
 
             print(f">>> Extraction successful: {info.get('title')}")
             return jsonify({
                 'success': True,
-                'title': info.get('title', 'Media'),
+                'title': info.get('title', 'Media Content'),
                 'formats': clean_formats,
                 'preview_url': preview_url,
-                'is_video': not is_direct_image and info.get('_type') != 'image'
+                'is_video': is_video
             })
 
     except Exception as e:
-        print(f">>> Unexpected error: {str(e)}")
-        return jsonify({'status': 'error', 'message': f'An unexpected error occurred: {str(e)}'}), 500
+        print(f">>> Unexpected global fetch error: {str(e)}")
+        return jsonify({'status': 'error', 'message': f'Server error: {str(e)}'}), 500
 
 @app.route('/download', methods=['POST'])
 def download():
     url = request.form.get('url')
     format_id = request.form.get('format_id')
-    download_type = request.form.get('type') # 'video', 'audio', or 'image'
+    download_type = request.form.get('type')
 
     if not url or not format_id or not download_type:
         return jsonify({'status': 'error', 'message': 'Missing parameters'}), 400
@@ -166,7 +189,7 @@ def download():
     print(f">>> Download started: {url} ({format_id})")
     
     random_id = secrets.token_hex(4)
-    outtmpl = os.path.join(DOWNLOAD_FOLDER, f'%(title)s__{random_id}.%(ext)s')
+    outtmpl = os.path.join(DOWNLOAD_FOLDER, f'%(title)u__{random_id}.%(ext)s') # Using %u for safe filenames
 
     common_opts = {
         'outtmpl': outtmpl,
@@ -189,7 +212,7 @@ def download():
     elif download_type == 'image':
         ydl_opts = {
             **common_opts,
-            'format': format_id if format_id != 'original_image' else 'best',
+            'format': format_id if format_id not in ['original', 'original_image'] else 'best',
         }
     else:
         try:
@@ -207,20 +230,32 @@ def download():
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            
-            if download_type == 'audio':
-                expected_filename = ydl.prepare_filename(info).rsplit('.', 1)[0] + '.mp3'
+            # Pinterest/direct image fallback
+            if download_type == 'image' and format_id == 'original_image':
+                # Manually download if it's a direct URL
+                filename = f"media__{random_id}.jpg"
+                path = os.path.join(DOWNLOAD_FOLDER, filename)
+                subprocess.check_call(["curl", "-L", "-o", path, url])
+                expected_filename = path
             else:
-                expected_filename = ydl.prepare_filename(info)
-                # Correction for merged video or image extension
-                if not os.path.exists(expected_filename):
-                    base = expected_filename.rsplit('.', 1)[0]
-                    for ext in ['mp4', 'mkv', 'webm', 'jpg', 'jpeg', 'png', 'webp']:
-                        if os.path.exists(f"{base}.{ext}"):
-                            expected_filename = f"{base}.{ext}"
-                            break
+                info = ydl.extract_info(url, download=True)
+                
+                # Check for entries in case it's a playlist item
+                if 'entries' in info:
+                    info = info['entries'][0]
 
+                if download_type == 'audio':
+                    expected_filename = ydl.prepare_filename(info).rsplit('.', 1)[0] + '.mp3'
+                else:
+                    expected_filename = ydl.prepare_filename(info)
+                    if not os.path.exists(expected_filename):
+                        base = expected_filename.rsplit('.', 1)[0]
+                        for ext in ['mp4', 'mkv', 'webm', 'jpg', 'jpeg', 'png', 'webp']:
+                            if os.path.exists(f"{base}.{ext}"):
+                                expected_filename = f"{base}.{ext}"
+                                break
+
+            # Emergency locator
             if not os.path.exists(expected_filename):
                 base_pattern = f"__{random_id}."
                 for f in os.listdir(DOWNLOAD_FOLDER):
@@ -229,7 +264,7 @@ def download():
                         break
 
             if not os.path.exists(expected_filename):
-                raise FileNotFoundError("Downloaded file could not be located on disk.")
+                raise FileNotFoundError("Could not locate the downloaded file.")
 
             file_basename = os.path.basename(expected_filename)
             print(f">>> Download completed: {file_basename}")
@@ -239,11 +274,8 @@ def download():
                 'download_url': f'/get-file/{file_basename}'
             })
 
-    except (ExtractorError, DownloadError) as e:
-        print(f">>> Download error: {str(e)}")
-        return jsonify({'status': 'error', 'message': 'Failed to download media. The link might be expired or blocked.'}), 500
     except Exception as e:
-        print(f">>> Unexpected download error: {str(e)}")
+        print(f">>> Download crash: {str(e)}")
         return jsonify({'status': 'error', 'message': f'Download failed: {str(e)}'}), 500
 
 @app.route('/get-file/<filename>')
