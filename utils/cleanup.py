@@ -22,6 +22,12 @@ def cleanup_loop():
                         if (now - creation_time) > FILE_EXPIRY_AGE:
                             os.remove(file_path)
                             print(f">>> Cleaned up expired file: {f}")
+                    elif os.path.isdir(file_path):
+                        creation_time = os.path.getctime(file_path)
+                        if (now - creation_time) > FILE_EXPIRY_AGE:
+                            import shutil
+                            shutil.rmtree(file_path, ignore_errors=True)
+                            print(f">>> Cleaned up expired directory: {f}")
         except Exception as e:
             print(f">>> Cleanup error: {e}")
             

@@ -1,82 +1,122 @@
 # Omni Downloader
 
-A professional, web-based universal media downloader built with Python and Flask. Powered by the robust `yt-dlp` engine, Omni Downloader allows you to fetch metadata, select resolutions, and download media from virtually any supported platform.
+A modern, high-performance web-based universal media downloader built with Python and Flask. Powered by `yt-dlp` and `FFmpeg`, Omni Downloader allows you to extract YouTube Music, high-fidelity audio tracks with customizable bitrates, high-definition videos up to 4K, and entire playlists packaged into organized `.zip` archives.
+
+---
 
 ## 🚀 Features
 
-- **Universal Media Downloader**: Support for hundreds of sites including YouTube, Instagram, TikTok, and more.
-- **Intelligent Format Fetching**: Preview and choose from available resolutions and formats before downloading.
-- **Multiple Quality Options**: Automatically lists from high-definition (4K/1080p) down to mobile-friendly resolutions.
-- **Audio Extraction**: Single-click conversion to high-quality MP3.
-- **Clean Interface**: A modern, glassmorphism-inspired web UI.
-- **Mobile-Friendly**: Fully responsive design for downloading on the go.
-- **Self-Cleaning**: Automatic background cleanup of temporary download files.
+- **🎵 YouTube Music & Hi-Fi Audio Extraction**:
+  - Download pure audio in **MP3, AAC, M4A, FLAC, WAV, or OPUS**.
+  - Customizable bitrate selection: **320 kbps (High Fidelity), 256 kbps, 192 kbps, 128 kbps**, or Lossless Studio Quality.
+  - Automatic metadata tagging (embeds title, artist, channel, and album art).
+- **📦 Full Playlist Downloads (.ZIP)**:
+  - Download entire YouTube or YouTube Music playlists at once.
+  - Automatically numbers, tags, and compresses all tracks into a single clean `.zip` archive.
+  - Built-in error tolerance skips unavailable/private tracks without failing the whole batch.
+- **📑 Interactive Playlist Tracklist**:
+  - Explore playlist contents directly in the UI.
+  - Pick and download individual tracks on demand.
+- **🎬 High-Definition Video Downloads**:
+  - Extract videos across resolutions up to 4K (2160p, 1440p, 1080p, 720p, etc.) merged into standard MP4.
+- **⚡ Smart Engine & Zero-Config FFmpeg**:
+  - Automatically detects system `ffmpeg` on `PATH` or uses the bundled `imageio-ffmpeg` package. No manual environment variable setup required!
+- **📊 Real-Time Progress Tracking**:
+  - Live progress percentage, transfer speed, and status stages (downloading, transcoding, zipping).
+- **💎 Premium Glassmorphism UI**:
+  - Clean dark-mode interface with smooth micro-animations, mode toggles, and responsive mobile-first design.
+- **🧹 Self-Cleaning Storage**:
+  - Automatic background cleanup thread sweeps expired temporary downloads.
+
+---
 
 ## 🛠️ Tech Stack
 
-- **Backend**: Python 3, Flask, yt-dlp
-- **Frontend**: HTML5, CSS3 (Vanilla), JavaScript (Vanilla)
-- **Processing**: FFmpeg (for audio/merging)
+- **Backend**: Python 3, Flask, yt-dlp, imageio-ffmpeg
+- **Processing**: FFmpeg (dynamic auto-discovery / fallback to `imageio-ffmpeg`)
+- **Frontend**: HTML5, Vanilla CSS3 (Glassmorphism), Vanilla JavaScript (Asynchronous Task Polling)
+
+---
 
 ## 📂 Project Structure
 
 ```text
 omni-downloader/
-├── app.py              # Flask server and downloader logic
-├── requirements.txt    # Python dependencies
-├── downloads/          # Temporary media storage
-└── templates/
-    └── index.html      # Responsive frontend
+├── app.py                  # Flask server and API route handlers
+├── config.py               # Global settings & FFmpeg discovery
+├── requirements.txt        # Python dependencies
+├── downloader/
+│   ├── extractor.py        # yt-dlp extraction & background task worker
+│   ├── formatter.py        # Audio/video format & playlist parsers
+│   └── updater.py          # Automatic yt-dlp update checker
+├── utils/
+│   ├── cleanup.py          # Background temporary file cleaner
+│   └── validators.py       # URL validation & input sanitization
+├── templates/
+│   └── index.html          # Responsive glassmorphism web UI
+└── downloads/              # Temporary download staging area
 ```
 
-## 🌏 Supported Sites
+---
 
-Omni Downloader leverages `yt-dlp`, supporting any platform it covers, including:
-- **Instagram** (Posts, Reels, Stories)
-- **TikTok** (No watermark where supported)
-- **YouTube** (Shorts, Videos)
+## 🌏 Supported Platforms
+
+Omni Downloader leverages `yt-dlp`, supporting hundreds of platforms including:
+- **YouTube & YouTube Music** (Tracks, Playlists, Videos, Shorts)
+- **Instagram** (Reels, Posts, Stories)
+- **TikTok** (Watermark-free where supported)
 - **X (Twitter)**
 - **Facebook**
 - **Pinterest**
 - *...and hundreds more.*
 
-## ⚙️ Installation
+---
 
-### Prerequisites
-- Python 3.8+
-- [FFmpeg](https://ffmpeg.org/download.html) (Installed and in system PATH)
+## ⚙️ Installation & Usage
 
-### Steps
+### 1. Clone the repository
+```bash
+git clone https://github.com/hexvish/omni-downloader.git
+cd omni-downloader
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/hexvish/omni-downloader.git
-   cd omni-downloader
-   ```
+### 2. Setup a virtual environment (Recommended)
+```bash
+python -m venv .venv
 
-2. **Setup virtual environment (Recommended)**
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
+# On Windows:
+.venv\Scripts\activate
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+# On Linux / macOS:
+source .venv/bin/activate
+```
 
-4. **Run the application**
-   ```bash
-   python app.py
-   ```
+### 3. Install dependencies
+```bash
+pip install -r requirements.txt
+```
+> [!NOTE]
+> FFmpeg is automatically provided through `imageio-ffmpeg` or your system `PATH`. No manual binary installation is necessary.
 
-5. **Access the UI**
-   Open your browser and navigate to `http://localhost:5000`.
+### 4. Run the application
+```bash
+python app.py
+```
+
+### 5. Access the Web UI
+Open your browser and navigate to:
+```
+http://localhost:5000
+```
+
+---
 
 ## 🤝 Contributing
 
-This project is open-source. Feel free to fork, report issues, or submit pull requests for Phase 3 features.
+Contributions, issues, and feature requests are welcome! Feel free to check the repository issues.
+
+---
 
 ## ⚖️ License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.

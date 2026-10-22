@@ -3,335 +3,1395 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal Social Media Downloader</title>
+    <title>Omni Downloader - YouTube Music, Video & Playlist Downloader</title>
+    <meta name="description" content="Download YouTube Music, audio in MP3, AAC, M4A, FLAC at custom bitrates, videos, and full playlists into ZIP.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #6366f1;
             --primary-hover: #4f46e5;
-            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-            --glass: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --text: #f8fafc;
+            --primary-glow: rgba(99, 102, 241, 0.35);
+            --accent-music: #ec4899;
+            --accent-video: #06b6d4;
+            --accent-playlist: #a855f7;
+            --bg-base: #090d16;
+            --bg-card: rgba(18, 24, 38, 0.75);
+            --bg-inner: rgba(11, 15, 25, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-border-focus: rgba(99, 102, 241, 0.5);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
+            --success: #10b981;
+            --error: #f43f5e;
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --radius-sm: 8px;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-gradient);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                        radial-gradient(circle at 85% 80%, rgba(236, 72, 153, 0.12) 0%, transparent 40%),
+                        var(--bg-base);
             background-attachment: fixed;
-            color: var(--text);
+            color: var(--text-main);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 30px 16px;
         }
 
         .container {
             width: 100%;
-            max-width: 600px;
+            max-width: 760px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
             text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .badge-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            background: rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #c7d2fe;
+            font-size: 0.82rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            letter-spacing: 0.3px;
         }
 
         h1 {
-            font-weight: 600;
-            font-size: 2.5rem;
-            margin-bottom: 2rem;
-            background: linear-gradient(to right, #818cf8, #c084fc);
+            font-weight: 800;
+            font-size: 2.6rem;
+            line-height: 1.15;
+            margin-bottom: 0.6rem;
+            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #818cf8 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        .card {
-            background: var(--glass);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 2.5rem 1.5rem;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            margin-bottom: 2rem;
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 400;
         }
 
-        input {
-            width: 100%;
-            padding: 1rem 1.5rem;
+        /* Glass Card */
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            margin-bottom: 1.75rem;
+        }
+
+        /* Mode Selector */
+        .mode-selector {
+            display: flex;
+            background: var(--bg-inner);
+            padding: 4px;
             border-radius: 12px;
             border: 1px solid var(--glass-border);
-            background: rgba(15, 23, 42, 0.5);
-            color: white;
-            font-size: 1rem;
-            outline: none;
-            transition: all 0.3s ease;
+            margin-bottom: 1.25rem;
+            gap: 4px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .mode-btn:hover {
+            color: var(--text-main);
+        }
+
+        .mode-btn.active {
+            background: rgba(99, 102, 241, 0.25);
+            color: #ffffff;
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+        }
+
+        /* Input Bar */
+        .input-group {
+            display: flex;
+            gap: 10px;
             margin-bottom: 1rem;
         }
 
-        input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        .input-wrapper {
+            position: relative;
+            flex: 1;
         }
 
-        button {
+        input[type="text"] {
             width: 100%;
-            padding: 1rem;
-            border-radius: 12px;
-            border: none;
-            background: var(--primary);
+            padding: 1rem 1.25rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--glass-border);
+            background: var(--bg-inner);
             color: white;
-            font-size: 1rem;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.25s ease;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+            background: rgba(15, 23, 42, 0.85);
+        }
+
+        .btn-action {
+            padding: 0 1.5rem;
+            border-radius: var(--radius-md);
+            border: none;
+            background: linear-gradient(135deg, var(--primary) 0%, #4338ca 100%);
+            color: white;
+            font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.25s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
+            white-space: nowrap;
+            box-shadow: 0 4px 14px var(--primary-glow);
         }
 
-        button:hover { background: var(--primary-hover); transform: translateY(-1px); }
-        button:active { transform: translateY(0); }
-        button:disabled { opacity: 0.7; cursor: not-allowed; }
+        .btn-action:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px var(--primary-glow);
+            filter: brightness(1.1);
+        }
 
-        .secondary-btn {
-            background: rgba(255, 255, 255, 0.05);
+        .btn-action:active { transform: translateY(0); }
+        .btn-action:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .btn-clear {
+            padding: 0 1rem;
+            border-radius: var(--radius-md);
             border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
         }
-        .secondary-btn:hover { background: rgba(255, 255, 255, 0.1); }
+        .btn-clear:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-main); }
 
-        .button-row {
+        /* Status Toast */
+        .status-box {
+            display: none;
+            padding: 0.85rem 1.25rem;
+            border-radius: var(--radius-md);
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-align: left;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .status-box.error {
+            background: rgba(244, 63, 94, 0.12);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            color: #fca5a5;
+            display: block;
+        }
+
+        .status-box.success {
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #6ee7b7;
+            display: block;
+        }
+
+        .status-box.info {
+            background: rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #c7d2fe;
+            display: block;
+        }
+
+        /* Result Section */
+        .results-section {
+            display: none;
+            margin-top: 1.75rem;
+            border-top: 1px solid var(--glass-border);
+            padding-top: 1.75rem;
+            animation: fadeIn 0.35s ease;
+        }
+
+        /* Media Header Card */
+        .media-header {
             display: flex;
-            gap: 12px;
-            margin-bottom: 1rem;
+            gap: 1.25rem;
+            align-items: center;
+            background: var(--bg-inner);
+            padding: 1.25rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--glass-border);
+            margin-bottom: 1.5rem;
+            text-align: left;
         }
 
-        .status { margin-top: 1.5rem; font-size: 0.9rem; min-height: 1.2rem; }
-        .status.error { color: #fb7185; }
-        .status.success { color: #34d399; }
-        .status.loading { color: #94a3b8; }
-
-        .preview-container {
-            width: 100%;
-            border-radius: 16px;
+        .media-thumb-wrap {
+            position: relative;
+            width: 140px;
+            height: 90px;
+            border-radius: 10px;
             overflow: hidden;
-            margin-bottom: 1.5rem;
+            flex-shrink: 0;
             background: #000;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 200px;
-        }
-        .video-preview { width: 100%; max-height: 400px; display: block; }
-        .image-preview { max-width: 100%; max-height: 400px; object-fit: contain; }
-        
-        .format-list {
-            margin-top: 1.5rem;
-            text-align: left;
-            display: none;
         }
 
-        .format-item {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            padding: 1rem;
-            margin-bottom: 0.8rem;
+        .media-thumb {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .media-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .media-tag-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 6px;
+            flex-wrap: wrap;
+        }
+
+        .mini-badge {
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: rgba(99, 102, 241, 0.2);
+            color: #c7d2fe;
+        }
+
+        .mini-badge.playlist-badge {
+            background: rgba(168, 85, 247, 0.2);
+            color: #e9d5ff;
+        }
+
+        .media-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 4px;
+            line-height: 1.3;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .media-uploader {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* Playlist Option Banner */
+        .playlist-banner {
+            display: none;
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(99, 102, 241, 0.12) 100%);
+            border: 1px solid rgba(168, 85, 247, 0.35);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .playlist-banner-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: all 0.2s ease;
+            margin-bottom: 0.75rem;
         }
 
-        .format-item:hover { background: rgba(255, 255, 255, 0.08); }
+        .playlist-badge-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            font-size: 1rem;
+            color: #e9d5ff;
+        }
 
-        .format-info { font-size: 0.95rem; font-weight: 400; }
+        /* Tab Controls */
+        .tabs-header {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 1.25rem;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 10px;
+        }
 
-        .dl-icon-btn {
-            background: var(--primary);
-            padding: 0.5rem 1rem;
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 8px 16px;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
             border-radius: 8px;
-            font-size: 0.85rem;
-            width: auto;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .loader {
+        .tab-btn:hover { color: var(--text-main); background: rgba(255, 255, 255, 0.04); }
+
+        .tab-btn.active {
+            color: #ffffff;
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.35);
+        }
+
+        .tab-btn.active.music-tab {
+            background: rgba(236, 72, 153, 0.2);
+            border-color: rgba(236, 72, 153, 0.4);
+            color: #fbcfe8;
+        }
+
+        /* Audio Format Section */
+        .option-group-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.6rem;
+            text-align: left;
+        }
+
+        .format-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+            gap: 8px;
+            margin-bottom: 1.25rem;
+        }
+
+        .format-card {
+            background: var(--bg-inner);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 10px 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .format-card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .format-card.selected {
+            background: rgba(99, 102, 241, 0.25);
+            border-color: var(--primary);
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .format-card.selected::after {
+            content: '✓';
+            position: absolute;
+            top: 4px;
+            right: 6px;
+            font-size: 0.7rem;
+            color: #818cf8;
+            font-weight: bold;
+        }
+
+        .format-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #fff;
+            margin-bottom: 2px;
+        }
+
+        .format-sub {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+
+        /* Bitrate Pill Row */
+        .bitrate-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .bitrate-pill {
+            flex: 1;
+            min-width: 90px;
+            background: var(--bg-inner);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .bitrate-pill:hover {
+            color: var(--text-main);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .bitrate-pill.selected {
+            background: rgba(236, 72, 153, 0.22);
+            border-color: var(--accent-music);
+            color: #fdf2f8;
+            box-shadow: 0 0 10px rgba(236, 72, 153, 0.25);
+        }
+
+        .bitrate-pill:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Download Action Box */
+        .action-box {
+            background: var(--bg-inner);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            text-align: left;
+        }
+
+        .action-info {
+            flex: 1;
+        }
+
+        .action-target {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #fff;
+            margin-bottom: 3px;
+        }
+
+        .action-specs {
+            font-size: 0.82rem;
+            color: #818cf8;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .btn-download-main {
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+            color: white;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(236, 72, 153, 0.35);
+        }
+
+        .btn-download-main:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(236, 72, 153, 0.45);
+            filter: brightness(1.1);
+        }
+
+        .btn-download-main.btn-playlist {
+            background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
+            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.35);
+        }
+
+        /* Video Format List */
+        .video-format-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .video-format-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-inner);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .video-format-item:hover {
+            border-color: rgba(99, 102, 241, 0.4);
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        .btn-video-dl {
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: none;
+            background: var(--primary);
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-video-dl:hover { background: var(--primary-hover); }
+
+        /* Playlist Tracklist View */
+        .playlist-tracks-wrap {
+            margin-top: 1.25rem;
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: var(--bg-inner);
+            text-align: left;
+        }
+
+        .tracklist-header {
+            padding: 10px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--glass-border);
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .tracklist-body {
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .tracklist-body::-webkit-scrollbar {
+            width: 6px;
+        }
+        .tracklist-body::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+        }
+
+        .track-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            transition: background 0.2s;
+        }
+
+        .track-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .track-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            width: 24px;
+            text-align: right;
+        }
+
+        .track-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .track-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #f1f5f9;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .track-sub {
+            font-size: 0.76rem;
+            color: var(--text-dim);
+        }
+
+        .btn-track-dl {
+            padding: 5px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.05);
+            color: #c7d2fe;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-track-dl:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Live Progress Card */
+        .progress-card {
+            display: none;
+            background: var(--bg-inner);
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            text-align: left;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .progress-status-text {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .progress-percent {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1rem;
+            color: #818cf8;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 0.75rem;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ec4899 0%, #8b5cf6 50%, #06b6d4 100%);
+            border-radius: 999px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+        }
+
+        .progress-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .progress-success-action {
+            display: none;
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .btn-save-file {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--success);
+            color: white;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .btn-save-file:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+        /* Loader Animation */
+        .spinner {
             width: 18px;
             height: 18px;
-            border: 2px solid #fff;
-            border-bottom-color: transparent;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #ffffff;
             border-radius: 50%;
+            animation: spin 0.8s linear infinite;
             display: inline-block;
-            animation: rotation 1s linear infinite;
         }
 
-        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
+        /* Platforms Footer */
         .platforms {
             display: flex;
             justify-content: center;
-            gap: 1rem;
-            opacity: 0.4;
+            gap: 8px;
             flex-wrap: wrap;
-            font-size: 0.8rem;
+            margin-top: 1.5rem;
         }
-        .platform-tag { background: var(--glass); padding: 0.4rem 0.8rem; border-radius: 100px; border: 1px solid var(--glass-border); }
+
+        .platform-pill {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            font-weight: 500;
+        }
+        .platform-pill.highlight {
+            color: #c7d2fe;
+            border-color: rgba(99, 102, 241, 0.3);
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        @media (max-width: 640px) {
+            h1 { font-size: 2rem; }
+            .card { padding: 1.25rem; }
+            .input-group { flex-direction: column; }
+            .media-header { flex-direction: column; text-align: center; }
+            .media-thumb-wrap { width: 100%; height: 160px; }
+            .action-box { flex-direction: column; align-items: stretch; text-align: center; }
+            .bitrate-row { flex-direction: column; }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Downloader</h1>
-        <div class="card">
-            <input type="text" id="urlInput" placeholder="Paste social media URL here..." autocomplete="off">
-            <div class="button-row">
-                <button id="fetchBtn">
-                    <span id="fetchBtnText">Fetch Formats</span>
-                    <span id="fetchBtnLoader" class="loader" style="display: none;"></span>
-                </button>
-                <button id="clearBtn" class="secondary-btn">Clear</button>
+        <!-- Header -->
+        <div class="header">
+            <div class="badge-tag">
+                <span>⚡ Universal Downloader</span>
+                <span>•</span>
+                <span>YouTube Music & Playlists</span>
             </div>
-            
-            <div id="status" class="status"></div>
+            <h1>Omni Downloader</h1>
+            <p class="subtitle">Extract YouTube Music & Videos in high fidelity MP3, AAC, M4A, FLAC, or download whole playlists at once.</p>
+        </div>
 
-            <div id="formatList" class="format-list">
-                <div id="previewContainer" class="preview-container"></div>
-                <h3 id="mediaTitle" style="font-size: 1rem; margin-bottom: 1rem; color: #818cf8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></h3>
-                <div id="formatContainer"></div>
+        <!-- Main Card -->
+        <div class="card">
+            <!-- Mode Switcher -->
+            <div class="mode-selector">
+                <button type="button" class="mode-btn active" id="modeAuto" onclick="setMode('auto')">
+                    <span>✨ Auto Detect</span>
+                </button>
+                <button type="button" class="mode-btn" id="modeSingle" onclick="setMode('single')">
+                    <span>🎵 Single Song / Video</span>
+                </button>
+                <button type="button" class="mode-btn" id="modePlaylist" onclick="setMode('playlist')">
+                    <span>📦 Whole Playlist</span>
+                </button>
+            </div>
+
+            <!-- Input Bar -->
+            <div class="input-group">
+                <div class="input-wrapper">
+                    <input type="text" id="urlInput" placeholder="Paste YouTube, YouTube Music, or Playlist link here..." autocomplete="off">
+                </div>
+                <button type="button" class="btn-clear" id="clearBtn" title="Clear">Clear</button>
+                <button type="button" class="btn-action" id="fetchBtn" onclick="handleFetch()">
+                    <span id="fetchBtnText">Analyze Link</span>
+                    <span id="fetchBtnLoader" class="spinner" style="display: none;"></span>
+                </button>
+            </div>
+
+            <!-- Status Alert -->
+            <div id="statusBox" class="status-box"></div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" class="results-section">
+                <!-- Media Summary Card -->
+                <div class="media-header">
+                    <div class="media-thumb-wrap">
+                        <img id="mediaThumb" class="media-thumb" src="" alt="Thumbnail preview">
+                    </div>
+                    <div class="media-details">
+                        <div class="media-tag-row">
+                            <span id="mediaTypeBadge" class="mini-badge">Audio / Video</span>
+                            <span id="mediaDurationBadge" class="mini-badge">0:00</span>
+                        </div>
+                        <h2 id="mediaTitle" class="media-title">Media Title</h2>
+                        <p id="mediaUploader" class="media-uploader">Channel Name</p>
+                    </div>
+                </div>
+
+                <!-- Playlist Option Banner (if playlist detected) -->
+                <div id="playlistBanner" class="playlist-banner">
+                    <div class="playlist-banner-header">
+                        <div class="playlist-badge-title">
+                            <span>📦 Full Playlist Detected</span>
+                            <span id="playlistTrackCountBadge" class="mini-badge playlist-badge">0 Tracks</span>
+                        </div>
+                    </div>
+                    <p style="font-size: 0.86rem; color: #ddd6fe; margin-bottom: 1rem;">
+                        You can download all tracks packaged together in a single ZIP file, or select individual songs below.
+                    </p>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button type="button" id="btnWholePlaylistMode" class="btn-action" style="padding: 10px 18px; font-size: 0.88rem;" onclick="activatePlaylistMode()">
+                            📦 Download Whole Playlist (ZIP)
+                        </button>
+                        <button type="button" id="btnSingleSongMode" class="btn-clear" style="padding: 10px 18px; font-size: 0.88rem;" onclick="activateSingleMode()">
+                            🎵 Pick Single Song
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabs: Audio vs Video -->
+                <div class="tabs-header">
+                    <button type="button" id="tabBtnAudio" class="tab-btn active music-tab" onclick="switchTab('audio')">
+                        <span>🎵 Audio / YouTube Music</span>
+                    </button>
+                    <button type="button" id="tabBtnVideo" class="tab-btn" onclick="switchTab('video')">
+                        <span>🎬 Video (MP4)</span>
+                    </button>
+                </div>
+
+                <!-- Audio Tab Content -->
+                <div id="audioTabContent">
+                    <div class="option-group-title">1. Choose Audio Format</div>
+                    <div class="format-grid" id="formatGrid"></div>
+
+                    <div class="option-group-title">2. Choose Audio Bitrate / Quality</div>
+                    <div class="bitrate-row" id="bitrateRow"></div>
+
+                    <!-- Action Box -->
+                    <div class="action-box">
+                        <div class="action-info">
+                            <div id="actionTargetText" class="action-target">Ready to download</div>
+                            <div id="actionSpecsText" class="action-specs">MP3 • 320 kbps</div>
+                        </div>
+                        <button type="button" id="btnDownloadAudio" class="btn-download-main" onclick="triggerDownload('audio')">
+                            <span>⬇ Download Track</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Video Tab Content -->
+                <div id="videoTabContent" style="display: none;">
+                    <div class="option-group-title">Available Video Resolutions</div>
+                    <div class="video-format-list" id="videoFormatList"></div>
+                </div>
+
+                <!-- Playlist Tracklist (shown if playlist) -->
+                <div id="playlistTracksSection" style="display: none;">
+                    <div class="playlist-tracks-wrap">
+                        <div class="tracklist-header">
+                            <span>Playlist Tracks</span>
+                            <span id="tracklistCount">0 Songs</span>
+                        </div>
+                        <div class="tracklist-body" id="tracklistBody"></div>
+                    </div>
+                </div>
+
+                <!-- Live Progress Card -->
+                <div id="progressCard" class="progress-card">
+                    <div class="progress-header">
+                        <div id="progressStatusText" class="progress-status-text">
+                            <span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span>
+                            <span>Downloading...</span>
+                        </div>
+                        <div id="progressPercent" class="progress-percent">0%</div>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div id="progressBarFill" class="progress-bar-fill"></div>
+                    </div>
+                    <div class="progress-meta">
+                        <span id="progressItemInfo">Preparing download...</span>
+                        <span id="progressSpeed">-- MB/s</span>
+                    </div>
+                    <div id="progressSuccessAction" class="progress-success-action">
+                        <a id="btnSaveFile" href="#" class="btn-save-file" download>
+                            <span>💾 Save Downloaded File</span>
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
 
+        <!-- Platforms -->
         <div class="platforms">
-            <span class="platform-tag">Instagram</span>
-            <span class="platform-tag">TikTok</span>
-            <span class="platform-tag">X / Twitter</span>
-            <span class="platform-tag">Facebook</span>
-            <span class="platform-tag">Pinterest</span>
+            <span class="platform-pill highlight">🎵 YouTube Music</span>
+            <span class="platform-pill highlight">📦 Full Playlists to ZIP</span>
+            <span class="platform-pill">YouTube Videos</span>
+            <span class="platform-pill">Instagram</span>
+            <span class="platform-pill">TikTok</span>
+            <span class="platform-pill">X / Twitter</span>
+            <span class="platform-pill">Facebook</span>
         </div>
     </div>
 
     <script>
+        // State variables
+        let currentMode = 'auto';
+        let currentTab = 'audio';
+        let mediaData = null;
+        let selectedFormat = 'mp3';
+        let selectedBitrate = '320';
+        let selectedVideoRes = '1080p';
+        let isDownloadingPlaylist = false;
+        let targetDownloadUrl = '';
+        let pollingInterval = null;
+
+        // Elements
         const urlInput = document.getElementById('urlInput');
+        const clearBtn = document.getElementById('clearBtn');
         const fetchBtn = document.getElementById('fetchBtn');
         const fetchBtnText = document.getElementById('fetchBtnText');
         const fetchBtnLoader = document.getElementById('fetchBtnLoader');
-        const clearBtn = document.getElementById('clearBtn');
-        const status = document.getElementById('status');
-        const formatList = document.getElementById('formatList');
-        const formatContainer = document.getElementById('formatContainer');
+        const statusBox = document.getElementById('statusBox');
+        const resultsSection = document.getElementById('resultsSection');
+        const mediaThumb = document.getElementById('mediaThumb');
         const mediaTitle = document.getElementById('mediaTitle');
-        const previewContainer = document.getElementById('previewContainer');
+        const mediaUploader = document.getElementById('mediaUploader');
+        const mediaTypeBadge = document.getElementById('mediaTypeBadge');
+        const mediaDurationBadge = document.getElementById('mediaDurationBadge');
+        const playlistBanner = document.getElementById('playlistBanner');
+        const playlistTrackCountBadge = document.getElementById('playlistTrackCountBadge');
+        const formatGrid = document.getElementById('formatGrid');
+        const bitrateRow = document.getElementById('bitrateRow');
+        const actionTargetText = document.getElementById('actionTargetText');
+        const actionSpecsText = document.getElementById('actionSpecsText');
+        const btnDownloadAudio = document.getElementById('btnDownloadAudio');
+        const videoFormatList = document.getElementById('videoFormatList');
+        const playlistTracksSection = document.getElementById('playlistTracksSection');
+        const tracklistCount = document.getElementById('tracklistCount');
+        const tracklistBody = document.getElementById('tracklistBody');
+        const progressCard = document.getElementById('progressCard');
+        const progressStatusText = document.getElementById('progressStatusText');
+        const progressPercent = document.getElementById('progressPercent');
+        const progressBarFill = document.getElementById('progressBarFill');
+        const progressItemInfo = document.getElementById('progressItemInfo');
+        const progressSpeed = document.getElementById('progressSpeed');
+        const progressSuccessAction = document.getElementById('progressSuccessAction');
+        const btnSaveFile = document.getElementById('btnSaveFile');
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            if (mode === 'auto') document.getElementById('modeAuto').classList.add('active');
+            if (mode === 'single') document.getElementById('modeSingle').classList.add('active');
+            if (mode === 'playlist') document.getElementById('modePlaylist').classList.add('active');
+        }
 
         function clearUI() {
             urlInput.value = '';
-            status.style.display = 'none';
-            status.textContent = '';
-            formatList.style.display = 'none';
-            formatContainer.innerHTML = '';
-            previewContainer.innerHTML = '';
-            mediaTitle.textContent = '';
+            statusBox.style.display = 'none';
+            statusBox.textContent = '';
+            resultsSection.style.display = 'none';
+            progressCard.style.display = 'none';
+            mediaData = null;
+            if (pollingInterval) clearInterval(pollingInterval);
         }
 
         clearBtn.addEventListener('click', clearUI);
+        urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleFetch(); });
 
-        async function handleFetch() {
-            const url = urlInput.value.trim();
-            if (!url) { return showStatus('Please paste a URL first', 'error'); }
-
-            setLoading(true);
-            showStatus('Fetching available formats...', 'loading');
-            formatList.style.display = 'none';
-            formatContainer.innerHTML = '';
-            previewContainer.innerHTML = '';
-
-            try {
-                const formData = new FormData();
-                formData.append('url', url);
-
-                const response = await fetch('/fetch_formats', { method: 'POST', body: formData });
-                const data = await response.json();
-
-                if (data.success) {
-                    showStatus('Choose your format', 'success');
-                    mediaTitle.textContent = data.title;
-                    
-                    // Handle Preview: Always use image for stability
-                    if (data.preview_url) {
-                        const img = document.createElement('img');
-                        img.src = data.preview_url;
-                        img.className = 'image-preview';
-                        previewContainer.appendChild(img);
-                    }
-
-                    data.formats.forEach(format => {
-                        const item = document.createElement('div');
-                        item.className = 'format-item';
-                        item.innerHTML = `
-                            <div class="format-info">${format.label}</div>
-                            <button class="dl-icon-btn" onclick="startDownload('${url}', '${format.id}', '${format.type}', this)">Download</button>
-                        `;
-                        formatContainer.appendChild(item);
-                    });
-                    formatList.style.display = 'block';
-                } else {
-                    showStatus(data.message || data.error || 'Failed to fetch formats', 'error');
-                }
-            } catch (err) {
-                showStatus('Connection error. Is the server running?', 'error');
-            } finally {
-                setLoading(false);
-            }
+        function showStatus(msg, type) {
+            statusBox.textContent = msg;
+            statusBox.className = 'status-box ' + type;
+            statusBox.style.display = 'block';
         }
 
-        async function startDownload(url, formatId, type, btn) {
-            const originalText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = 'Processing...';
-            showStatus('Starting download, please wait...', 'loading');
-
-            try {
-                const formData = new FormData();
-                formData.append('url', url);
-                formData.append('format_id', formatId);
-                formData.append('type', type);
-
-                const response = await fetch('/download', { method: 'POST', body: formData });
-                const data = await response.json();
-
-                if (data.success) {
-                    showStatus('Download successful!', 'success');
-                    const a = document.createElement('a');
-                    a.href = data.download_url;
-                    a.download = data.filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                } else {
-                    showStatus(data.message || data.error || 'Download failed', 'error');
-                }
-            } catch (err) {
-                showStatus('Error starting download', 'error');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = originalText;
-            }
-        }
-
-        function setLoading(isLoading) {
+        function setFetchLoading(isLoading) {
             fetchBtn.disabled = isLoading;
             fetchBtnText.style.display = isLoading ? 'none' : 'inline';
             fetchBtnLoader.style.display = isLoading ? 'inline-block' : 'none';
         }
 
-        function showStatus(msg, type) {
-            status.style.display = 'block';
-            status.textContent = msg;
-            status.className = 'status ' + type;
+        async function handleFetch() {
+            const url = urlInput.value.trim();
+            if (!url) {
+                return showStatus('Please enter a YouTube, YouTube Music, or Playlist URL.', 'error');
+            }
+
+            setFetchLoading(true);
+            showStatus('Analyzing media details and available formats...', 'info');
+            resultsSection.style.display = 'none';
+            progressCard.style.display = 'none';
+
+            try {
+                const formData = new FormData();
+                formData.append('url', url);
+                formData.append('mode', currentMode);
+
+                const response = await fetch('/fetch_formats', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Failed to fetch media details.');
+                }
+
+                mediaData = data;
+                targetDownloadUrl = url;
+                renderResults(data);
+                showStatus('Media details loaded! Choose your format and quality below.', 'success');
+            } catch (err) {
+                showStatus(err.message || 'Failed to connect to server.', 'error');
+            } finally {
+                setFetchLoading(false);
+            }
         }
 
-        fetchBtn.addEventListener('click', handleFetch);
-        urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleFetch(); });
+        function renderResults(data) {
+            resultsSection.style.display = 'block';
+            mediaTitle.textContent = data.title;
+            mediaUploader.textContent = data.uploader || 'Creator';
+            mediaThumb.src = data.preview_url || '';
+
+            if (data.is_playlist) {
+                mediaTypeBadge.textContent = '🎶 Playlist';
+                mediaTypeBadge.className = 'mini-badge playlist-badge';
+                mediaDurationBadge.textContent = `${data.track_count} tracks`;
+                playlistBanner.style.display = 'block';
+                playlistTrackCountBadge.textContent = `${data.track_count} Tracks`;
+                playlistTracksSection.style.display = 'block';
+                tracklistCount.textContent = `${data.track_count} Tracks`;
+                renderTracklist(data.entries);
+                // Default to Whole Playlist mode if playlist was fetched
+                activatePlaylistMode();
+            } else {
+                mediaTypeBadge.textContent = '🎵 Single Track';
+                mediaTypeBadge.className = 'mini-badge';
+                mediaDurationBadge.textContent = data.duration_str || '';
+                playlistBanner.style.display = 'none';
+                playlistTracksSection.style.display = 'none';
+                activateSingleMode();
+            }
+
+            renderAudioFormats(data.audio_formats || []);
+            renderVideoFormats(data.video_formats || []);
+            updateActionSummary();
+        }
+
+        function activatePlaylistMode() {
+            isDownloadingPlaylist = true;
+            document.getElementById('btnWholePlaylistMode').className = 'btn-action';
+            document.getElementById('btnSingleSongMode').className = 'btn-clear';
+            btnDownloadAudio.className = 'btn-download-main btn-playlist';
+            updateActionSummary();
+        }
+
+        function activateSingleMode() {
+            isDownloadingPlaylist = false;
+            document.getElementById('btnWholePlaylistMode').className = 'btn-clear';
+            document.getElementById('btnSingleSongMode').className = 'btn-action';
+            btnDownloadAudio.className = 'btn-download-main';
+            updateActionSummary();
+        }
+
+        function renderTracklist(entries) {
+            tracklistBody.innerHTML = '';
+            if (!entries || !entries.length) return;
+
+            entries.forEach(track => {
+                const item = document.createElement('div');
+                item.className = 'track-item';
+                item.innerHTML = `
+                    <div class="track-num">${track.index}</div>
+                    <div class="track-info">
+                        <div class="track-title" title="${track.title}">${track.title}</div>
+                        <div class="track-sub">${track.uploader || ''} ${track.duration_str ? '• ' + track.duration_str : ''}</div>
+                    </div>
+                    <button type="button" class="btn-track-dl" onclick="downloadSingleTrack('${track.url || ''}', '${track.title.replace(/'/g, "\\'")}')">
+                        Download Song
+                    </button>
+                `;
+                tracklistBody.appendChild(item);
+            });
+        }
+
+        function renderAudioFormats(formats) {
+            formatGrid.innerHTML = '';
+            formats.forEach(f => {
+                const card = document.createElement('div');
+                card.className = `format-card ${f.codec === selectedFormat ? 'selected' : ''}`;
+                card.onclick = () => selectAudioFormat(f.codec);
+                card.innerHTML = `
+                    <div class="format-name">${f.label}</div>
+                    <div class="format-sub">${f.badge}</div>
+                `;
+                formatGrid.appendChild(card);
+            });
+            renderBitrates();
+        }
+
+        function selectAudioFormat(codec) {
+            selectedFormat = codec;
+            document.querySelectorAll('.format-card').forEach(c => c.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+            renderBitrates();
+            updateActionSummary();
+        }
+
+        function renderBitrates() {
+            bitrateRow.innerHTML = '';
+            const activeFormatObj = (mediaData?.audio_formats || []).find(f => f.codec === selectedFormat);
+            const bitrates = activeFormatObj ? activeFormatObj.bitrates : ['320', '256', '192', '128'];
+
+            if (!bitrates.includes(selectedBitrate)) {
+                selectedBitrate = activeFormatObj ? activeFormatObj.default_bitrate : bitrates[0];
+            }
+
+            bitrates.forEach(b => {
+                const pill = document.createElement('button');
+                pill.type = 'button';
+                pill.className = `bitrate-pill ${b === selectedBitrate ? 'selected' : ''}`;
+                pill.textContent = b === 'Lossless' ? '✨ Lossless Studio Quality' : `${b} kbps`;
+                pill.onclick = () => selectBitrate(b);
+                bitrateRow.appendChild(pill);
+            });
+        }
+
+        function selectBitrate(b) {
+            selectedBitrate = b;
+            document.querySelectorAll('.bitrate-pill').forEach(p => p.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+            updateActionSummary();
+        }
+
+        function renderVideoFormats(formats) {
+            videoFormatList.innerHTML = '';
+            if (!formats || !formats.length) {
+                videoFormatList.innerHTML = '<div style="color: var(--text-dim); padding: 10px;">No video streams found for this content.</div>';
+                return;
+            }
+
+            formats.forEach(f => {
+                const item = document.createElement('div');
+                item.className = 'video-format-item';
+                item.innerHTML = `
+                    <div style="font-weight: 600; font-size: 0.95rem;">${f.label}</div>
+                    <button type="button" class="btn-video-dl" onclick="triggerVideoDownload('${f.id}')">
+                        Download Video
+                    </button>
+                `;
+                videoFormatList.appendChild(item);
+            });
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            if (tab === 'audio') {
+                document.getElementById('tabBtnAudio').classList.add('active');
+                document.getElementById('audioTabContent').style.display = 'block';
+                document.getElementById('videoTabContent').style.display = 'none';
+            } else {
+                document.getElementById('tabBtnVideo').classList.add('active');
+                document.getElementById('audioTabContent').style.display = 'none';
+                document.getElementById('videoTabContent').style.display = 'block';
+            }
+        }
+
+        function updateActionSummary() {
+            const formatUpper = selectedFormat.toUpperCase();
+            const bitrateStr = selectedBitrate === 'Lossless' ? 'Lossless' : `${selectedBitrate} kbps`;
+
+            if (isDownloadingPlaylist) {
+                actionTargetText.textContent = `Download Entire Playlist (${mediaData?.track_count || 0} Tracks)`;
+                actionSpecsText.textContent = `All songs packaged into ZIP • ${formatUpper} @ ${bitrateStr}`;
+                btnDownloadAudio.innerHTML = `<span>📦 Download Full Playlist (ZIP)</span>`;
+            } else {
+                actionTargetText.textContent = `Download: ${mediaData?.title || 'Selected Track'}`;
+                actionSpecsText.textContent = `${formatUpper} • ${bitrateStr} • High Quality Audio`;
+                btnDownloadAudio.innerHTML = `<span>⬇ Download Audio Track</span>`;
+            }
+        }
+
+        function downloadSingleTrack(trackUrl, title) {
+            if (!trackUrl) return;
+            isDownloadingPlaylist = false;
+            updateActionSummary();
+            startDownloadProcess({
+                url: trackUrl,
+                type: 'audio',
+                codec: selectedFormat,
+                bitrate: selectedBitrate,
+                is_playlist: false,
+                title: title
+            });
+        }
+
+        function triggerDownload(type) {
+            startDownloadProcess({
+                url: targetDownloadUrl,
+                type: type,
+                codec: selectedFormat,
+                bitrate: selectedBitrate,
+                is_playlist: isDownloadingPlaylist,
+                title: mediaData?.title || 'Media'
+            });
+        }
+
+        function triggerVideoDownload(resolution) {
+            startDownloadProcess({
+                url: targetDownloadUrl,
+                type: 'video',
+                resolution: resolution,
+                is_playlist: isDownloadingPlaylist,
+                title: mediaData?.title || 'Video'
+            });
+        }
+
+        async function startDownloadProcess(params) {
+            progressCard.style.display = 'block';
+            progressCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Initiating download task...</span>`;
+            progressPercent.textContent = '0%';
+            progressBarFill.style.width = '0%';
+            progressItemInfo.textContent = params.is_playlist ? 'Fetching playlist items...' : 'Starting download engine...';
+            progressSpeed.textContent = '';
+            progressSuccessAction.style.display = 'none';
+
+            try {
+                const formData = new FormData();
+                formData.append('url', params.url);
+                formData.append('type', params.type || 'audio');
+                formData.append('codec', params.codec || 'mp3');
+                formData.append('bitrate', params.bitrate || '320');
+                formData.append('resolution', params.resolution || '1080p');
+                formData.append('is_playlist', params.is_playlist ? 'true' : 'false');
+
+                const response = await fetch('/start_download', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Failed to start download task.');
+                }
+
+                // Poll for progress
+                pollTaskStatus(data.task_id, params);
+            } catch (err) {
+                progressStatusText.innerHTML = `<span style="color: var(--error);">❌ Error</span>`;
+                progressItemInfo.textContent = err.message || 'Download failed.';
+                showStatus(err.message, 'error');
+            }
+        }
+
+        function pollTaskStatus(taskId, params) {
+            if (pollingInterval) clearInterval(pollingInterval);
+
+            pollingInterval = setInterval(async () => {
+                try {
+                    const res = await fetch(`/task_status/${taskId}`);
+                    if (!res.ok) throw new Error('Task lost');
+                    const task = await res.json();
+
+                    if (task.status === 'downloading' || task.status === 'starting') {
+                        const pct = Math.round(task.progress || 0);
+                        progressBarFill.style.width = pct + '%';
+                        progressPercent.textContent = pct + '%';
+                        
+                        if (task.total_items > 1) {
+                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Downloading Playlist (Track ${task.current_item} of ${task.total_items})...</span>`;
+                            progressItemInfo.textContent = task.current_title ? `Song: ${task.current_title}` : 'Downloading tracks...';
+                        } else {
+                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Downloading media stream...</span>`;
+                            progressItemInfo.textContent = task.current_title || params.title;
+                        }
+                        progressSpeed.textContent = task.speed || '';
+                    } else if (task.status === 'converting') {
+                        progressBarFill.style.width = '96%';
+                        progressPercent.textContent = '96%';
+                        progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Transcoding audio with FFmpeg...</span>`;
+                        progressItemInfo.textContent = `Encoding into ${params.codec.toUpperCase()} (${params.bitrate} kbps) with metadata tags`;
+                    } else if (task.status === 'zipping') {
+                        progressBarFill.style.width = '98%';
+                        progressPercent.textContent = '98%';
+                        progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Compressing into ZIP archive...</span>`;
+                        progressItemInfo.textContent = 'Finalizing playlist package...';
+                    } else if (task.status === 'completed') {
+                        clearInterval(pollingInterval);
+                        progressBarFill.style.width = '100%';
+                        progressPercent.textContent = '100%';
+                        progressStatusText.innerHTML = `<span style="color: var(--success);">🎉 Download Complete!</span>`;
+                        progressItemInfo.textContent = `File ready: ${task.filename}`;
+                        progressSpeed.textContent = 'Completed';
+
+                        // Auto-trigger browser download
+                        btnSaveFile.href = task.download_url;
+                        btnSaveFile.download = task.filename;
+                        progressSuccessAction.style.display = 'block';
+
+                        const autoAnchor = document.createElement('a');
+                        autoAnchor.href = task.download_url;
+                        autoAnchor.download = task.filename;
+                        document.body.appendChild(autoAnchor);
+                        autoAnchor.click();
+                        document.body.removeChild(autoAnchor);
+
+                        showStatus('Your download is ready! If it didn\'t start automatically, click Save Downloaded File.', 'success');
+                    } else if (task.status === 'error') {
+                        clearInterval(pollingInterval);
+                        progressStatusText.innerHTML = `<span style="color: var(--error);">❌ Error Occurred</span>`;
+                        progressItemInfo.textContent = task.error || 'Download failed.';
+                        showStatus(task.error || 'Download failed.', 'error');
+                    }
+                } catch (e) {
+                    clearInterval(pollingInterval);
+                    showStatus('Connection lost with download worker.', 'error');
+                }
+            }, 700);
+        }
     </script>
 </body>
 </html>
