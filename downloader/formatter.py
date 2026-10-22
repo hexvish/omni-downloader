@@ -81,12 +81,6 @@ VIDEO_CONTAINERS_CONFIG = [
         'label': 'WEBM',
         'badge': 'Modern Web',
         'desc': 'Web-optimized container format with high compression efficiency'
-    },
-    {
-        'codec': '3gp',
-        'label': '3GP',
-        'badge': 'Compact',
-        'desc': 'Ultra-compact video format suitable for storage saving'
     }
 ]
 

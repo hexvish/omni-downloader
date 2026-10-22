@@ -1,11 +1,13 @@
 import os
+import re
 import secrets
 import shutil
+import subprocess
 import zipfile
 import threading
 import time
 import yt_dlp
-from config import YDL_COMMON_OPTS, DOWNLOAD_FOLDER
+from config import YDL_COMMON_OPTS, DOWNLOAD_FOLDER, FFMPEG_PATH
 
 # Thread-safe in-memory task tracker
 tasks_lock = threading.Lock()
@@ -57,6 +59,54 @@ def find_file_by_id(folder, random_id):
         if base_pattern in f and not f.endswith('.temp') and not f.endswith('.part'):
             return f
     return None
+
+def cleanup_playlist_directory(playlist_dir, fallback_ext='mp4'):
+    """
+    Cleans up playlist directory before zipping:
+    1. Removes any 0-byte files (e.g. failed .temp files).
+    2. Removes .temp, .part, .ytdl files.
+    3. If any split stream pairs (.fXXX.mp4 + .fXXX.webm) remain unmerged,
+       merges them using FFmpeg into a proper video file.
+    4. Removes any leftover unmerged format fragments (.f\d+.*).
+    """
+    for root, dirs, files in os.walk(playlist_dir):
+        for f in files:
+            p = os.path.join(root, f)
+            if not os.path.exists(p):
+                continue
+            if os.path.getsize(p) == 0 or f.endswith('.temp') or f.endswith('.part') or '.temp.' in f or f.endswith('.ytdl'):
+                try:
+                    os.remove(p)
+                except Exception:
+                    pass
+
+    fragments = {}
+    for root, dirs, files in os.walk(playlist_dir):
+        for f in files:
+            m = re.match(r'^(.*?)\.f\d+\.(mp4|webm|m4a|mkv)$', f)
+            if m:
+                base = m.group(1)
+                fragments.setdefault(base, []).append(os.path.join(root, f))
+
+    if fragments and FFMPEG_PATH and os.path.exists(FFMPEG_PATH):
+        for base, parts in fragments.items():
+            target_out = os.path.join(playlist_dir, f"{base}.{fallback_ext}")
+            if not os.path.exists(target_out) and len(parts) >= 2:
+                cmd = [FFMPEG_PATH, '-y']
+                for part in parts:
+                    cmd.extend(['-i', part])
+                cmd.extend(['-c:v', 'copy', '-c:a', 'aac', target_out])
+                try:
+                    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=60)
+                except Exception:
+                    pass
+
+            if os.path.exists(target_out) and os.path.getsize(target_out) > 0:
+                for part in parts:
+                    try:
+                        os.remove(part)
+                    except Exception:
+                        pass
 
 def _run_single_download(task_id, url, download_type, codec, bitrate, resolution):
     random_id = secrets.token_hex(4)
@@ -110,6 +160,8 @@ def _run_single_download(task_id, url, download_type, codec, bitrate, resolution
             fmt_str = 'bestvideo+bestaudio/best'
 
         chosen_container = (codec or 'mp4').lower()
+        if chosen_container not in ('mp4', 'mkv', 'webm'):
+            chosen_container = 'mp4'
         ydl_opts.update({
             'format': fmt_str,
             'merge_output_format': chosen_container,
@@ -223,6 +275,9 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
             fmt_str = 'bestvideo+bestaudio/best'
 
         chosen_container = (codec or 'mp4').lower()
+        if chosen_container not in ('mp4', 'mkv', 'webm'):
+            chosen_container = 'mp4'
+
         ydl_opts.update({
             'format': fmt_str,
             'merge_output_format': chosen_container,
@@ -242,6 +297,9 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
             tasks[task_id]['progress'] = 98.0
             tasks[task_id]['completed_items'] = track_stats['total_items']
 
+        # Clean up directory and finalize any unmerged stream fragments before zipping
+        cleanup_playlist_directory(playlist_dir, fallback_ext=chosen_container if download_type == 'video' else (codec or 'mp3'))
+
         # Safe zip filename
         safe_title = "".join(c for c in (playlist_title or 'Playlist') if c.isalnum() or c in (' ', '_', '-')).strip()
         safe_title = safe_title.replace(' ', '_') or 'Playlist'
@@ -252,6 +310,13 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
             for root, dirs, files in os.walk(playlist_dir):
                 for file in files:
                     file_path = os.path.join(root, file)
+                    # Exclude 0-byte files, temp/part files, and any format fragments
+                    if os.path.getsize(file_path) == 0:
+                        continue
+                    if file.endswith('.temp') or file.endswith('.part') or '.temp.' in file or file.endswith('.ytdl'):
+                        continue
+                    if re.search(r'\.f\d+\.(mp4|webm|m4a|mkv)$', file):
+                        continue
                     arcname = os.path.relpath(file_path, playlist_dir)
                     zipf.write(file_path, arcname)
 
