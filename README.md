@@ -76,6 +76,9 @@ Omni Downloader leverages `yt-dlp`, supporting hundreds of platforms including:
 ## ⚙️ Installation & Usage
 
 ### 🚀 Quick Start (Windows - One Click)
+> [!IMPORTANT]
+> If you downloaded the repository as a ZIP from GitHub, right-click the zip and choose **Extract All...** first before running. Do not run directly from inside the zip archive preview.
+
 Simply double-click **`run.bat`** (or run `run.bat` in Command Prompt / PowerShell).
 It will automatically:
 1. Verify Python and setup `.venv` if not already created.
