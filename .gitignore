@@ -3,5 +3,9 @@ __pycache__/
 *.pyc
 downloads/*
 !downloads/.gitkeep
+bin/*
+!bin/.gitkeep
+build/
+dist/
 .env
 .DS_Store

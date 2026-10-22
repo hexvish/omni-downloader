@@ -43,18 +43,24 @@ A modern, high-performance web-based universal media downloader built with Pytho
 ```text
 omni-downloader/
 ├── app.py                  # Flask server and API route handlers
-├── config.py               # Global settings & FFmpeg discovery
+├── desktop.py              # Native desktop window launcher (pywebview)
+├── build_standalone.py     # 1-click standalone .exe packager (PyInstaller)
+├── config.py               # Global settings & engine discovery
 ├── requirements.txt        # Python dependencies
 ├── run.bat                 # One-click Windows launcher & auto-updater
 ├── downloader/
+│   ├── engine.py           # yt-dlp & FFmpeg dynamic engine manager
 │   ├── extractor.py        # yt-dlp extraction & background task worker
 │   ├── formatter.py        # Audio/video format & playlist parsers
 │   └── updater.py          # Automatic yt-dlp update checker
 ├── utils/
 │   ├── cleanup.py          # Background temporary file cleaner
 │   └── validators.py       # URL validation & input sanitization
+├── static/
+│   ├── css/style.css       # Dedicated glassmorphism design system
+│   └── js/app.js           # Client-side state, polling & cancel handlers
 ├── templates/
-│   └── index.html          # Responsive glassmorphism web UI
+│   └── index.html          # Lightweight semantic HTML interface
 └── downloads/              # Temporary download staging area
 ```
 

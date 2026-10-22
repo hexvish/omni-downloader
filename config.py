@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 
 # Application Settings
@@ -7,9 +8,20 @@ SOCKET_TIMEOUT = 20
 MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
 AUTO_UPDATE = True
 
+# Discover bin directory
+if getattr(sys, 'frozen', False):
+    BIN_DIR = os.path.join(os.path.dirname(sys.executable), 'bin')
+else:
+    BIN_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin')
+
 # Discover FFmpeg path
-FFMPEG_PATH = shutil.which('ffmpeg')
-if not FFMPEG_PATH:
+bin_ffmpeg = os.path.join(BIN_DIR, 'ffmpeg.exe' if os.name == 'nt' else 'ffmpeg')
+FFMPEG_PATH = None
+if os.path.exists(bin_ffmpeg) and os.path.getsize(bin_ffmpeg) > 0:
+    FFMPEG_PATH = bin_ffmpeg
+elif shutil.which('ffmpeg'):
+    FFMPEG_PATH = shutil.which('ffmpeg')
+else:
     try:
         import imageio_ffmpeg
         FFMPEG_PATH = imageio_ffmpeg.get_ffmpeg_exe()
@@ -21,6 +33,7 @@ if FFMPEG_PATH:
     current_path = os.environ.get('PATH', '')
     if ffmpeg_dir not in current_path:
         os.environ['PATH'] = ffmpeg_dir + os.pathsep + current_path
+
 
 # yt-dlp Options
 YDL_COMMON_OPTS = {

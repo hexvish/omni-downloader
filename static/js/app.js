@@ -643,3 +643,54 @@ function pollTaskStatus(taskId, params, fallbackTotal = 1) {
     };
     updateActiveTasksCount();
 }
+
+// --- Open Downloads Folder ---
+async function openDownloadsFolder() {
+    try {
+        const res = await fetch('/open_downloads_folder', { method: 'POST' });
+        const data = await res.json();
+        if (!data.success) {
+            showStatus('Could not open downloads folder: ' + (data.error || 'Unknown error'), 'error');
+        }
+    } catch (e) {
+        showStatus('Error opening downloads folder.', 'error');
+    }
+}
+
+// --- Engine Status & First-Launch Setup Monitoring ---
+async function checkEngineStatus() {
+    const modal = document.getElementById('engineSetupModal');
+    const bar = document.getElementById('engineProgressBar');
+    const detail = document.getElementById('engineStatusDetail');
+    const badge = document.getElementById('engineStatusBadge');
+
+    try {
+        const res = await fetch('/api/engine/status');
+        if (!res.ok) return;
+        const status = await res.json();
+
+        if (status.ffmpeg_ready) {
+            if (modal) modal.style.display = 'none';
+            if (badge) {
+                const ytdlpInfo = status.ytdlp_updating ? 'updating...' : (status.ytdlp_version ? `v${status.ytdlp_version}` : 'ready');
+                badge.innerHTML = `⚡ Engine: <span style="color: var(--success);">FFmpeg Ready</span> • <span style="color: #c7d2fe;">yt-dlp ${ytdlpInfo}</span>`;
+            }
+        } else {
+            // First run: FFmpeg is downloading
+            if (modal) modal.style.display = 'flex';
+            if (bar) bar.style.width = (status.ffmpeg_progress || 15) + '%';
+            if (detail) detail.textContent = status.ffmpeg_status || 'Downloading audio/video components...';
+            setTimeout(checkEngineStatus, 1000);
+        }
+    } catch (e) {
+        // Retry silently
+    }
+}
+
+// Initial engine check on page load
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    checkEngineStatus();
+} else {
+    document.addEventListener('DOMContentLoaded', checkEngineStatus);
+}
+

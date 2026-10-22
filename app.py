@@ -6,6 +6,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 # Module imports
 from config import DOWNLOAD_FOLDER
 from downloader.updater import check_for_updates
+from downloader.engine import init_engine, get_engine_status
 from downloader.extractor import (
     extract_media_info, 
     download_media, 
@@ -88,6 +89,25 @@ def handle_cancel_download(task_id):
     success = cancel_task(task_id)
     return jsonify({'success': success, 'task_id': task_id})
 
+@app.route('/api/engine/status', methods=['GET'])
+def handle_engine_status():
+    return jsonify(get_engine_status())
+
+@app.route('/open_downloads_folder', methods=['POST'])
+def handle_open_downloads_folder():
+    try:
+        if os.name == 'nt':
+            os.startfile(DOWNLOAD_FOLDER)
+        elif sys.platform == 'darwin':
+            import subprocess
+            subprocess.run(['open', DOWNLOAD_FOLDER])
+        else:
+            import subprocess
+            subprocess.run(['xdg-open', DOWNLOAD_FOLDER])
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/download', methods=['POST'])
 def download():
     url = sanitize_input(request.form.get('url'))
@@ -137,6 +157,7 @@ def get_file(filename):
 
 if __name__ == '__main__':
     # Startup sequence
+    init_engine()
     check_for_updates()
     start_cleanup_worker()
     
