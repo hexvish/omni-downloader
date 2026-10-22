@@ -949,7 +949,12 @@
                             <span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span>
                             <span>Downloading...</span>
                         </div>
-                        <div id="progressPercent" class="progress-percent">0%</div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div id="progressCounterBadge" class="mini-badge" style="display: none; background: rgba(168, 85, 247, 0.25); border: 1px solid rgba(168, 85, 247, 0.4); color: #e9d5ff; font-size: 0.82rem; padding: 4px 10px; font-weight: 700;">
+                                <span id="completedCounterText">0 / 0 Completed</span>
+                            </div>
+                            <div id="progressPercent" class="progress-percent">0%</div>
+                        </div>
                     </div>
                     <div class="progress-bar-bg">
                         <div id="progressBarFill" class="progress-bar-fill"></div>
@@ -1021,6 +1026,8 @@
         const progressBarFill = document.getElementById('progressBarFill');
         const progressItemInfo = document.getElementById('progressItemInfo');
         const progressSpeed = document.getElementById('progressSpeed');
+        const progressCounterBadge = document.getElementById('progressCounterBadge');
+        const completedCounterText = document.getElementById('completedCounterText');
         const progressSuccessAction = document.getElementById('progressSuccessAction');
         const btnSaveFile = document.getElementById('btnSaveFile');
 
@@ -1302,6 +1309,14 @@
             progressSpeed.textContent = '';
             progressSuccessAction.style.display = 'none';
 
+            const totalExpected = params.total_items || (params.is_playlist ? (mediaData?.track_count || 1) : 1);
+            if (params.is_playlist || totalExpected > 1) {
+                progressCounterBadge.style.display = 'inline-flex';
+                completedCounterText.textContent = `🎵 0 of ${totalExpected} Completed`;
+            } else {
+                progressCounterBadge.style.display = 'none';
+            }
+
             try {
                 const formData = new FormData();
                 formData.append('url', params.url);
@@ -1310,6 +1325,7 @@
                 formData.append('bitrate', params.bitrate || '320');
                 formData.append('resolution', params.resolution || '1080p');
                 formData.append('is_playlist', params.is_playlist ? 'true' : 'false');
+                formData.append('total_items', totalExpected);
 
                 const response = await fetch('/start_download', { method: 'POST', body: formData });
                 const data = await response.json();
@@ -1319,7 +1335,7 @@
                 }
 
                 // Poll for progress
-                pollTaskStatus(data.task_id, params);
+                pollTaskStatus(data.task_id, params, totalExpected);
             } catch (err) {
                 progressStatusText.innerHTML = `<span style="color: var(--error);">❌ Error</span>`;
                 progressItemInfo.textContent = err.message || 'Download failed.';
@@ -1327,7 +1343,7 @@
             }
         }
 
-        function pollTaskStatus(taskId, params) {
+        function pollTaskStatus(taskId, params, fallbackTotal = 1) {
             if (pollingInterval) clearInterval(pollingInterval);
 
             pollingInterval = setInterval(async () => {
@@ -1336,35 +1352,64 @@
                     if (!res.ok) throw new Error('Task lost');
                     const task = await res.json();
 
+                    const total = task.total_items || fallbackTotal || 1;
+                    const completed = task.completed_items !== undefined ? task.completed_items : 0;
+                    const current = task.current_item || 1;
+                    const isPlaylist = params.is_playlist || total > 1;
+
+                    if (isPlaylist) {
+                        progressCounterBadge.style.display = 'inline-flex';
+                        completedCounterText.textContent = `🎵 ${completed} of ${total} Completed`;
+                    } else {
+                        progressCounterBadge.style.display = 'none';
+                    }
+
                     if (task.status === 'downloading' || task.status === 'starting') {
                         const pct = Math.round(task.progress || 0);
                         progressBarFill.style.width = pct + '%';
                         progressPercent.textContent = pct + '%';
                         
-                        if (task.total_items > 1) {
-                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Downloading Playlist (Track ${task.current_item} of ${task.total_items})...</span>`;
-                            progressItemInfo.textContent = task.current_title ? `Song: ${task.current_title}` : 'Downloading tracks...';
+                        if (isPlaylist) {
+                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Downloading Song ${current} of ${total} • <b>${completed}/${total} Completed</b></span>`;
+                            progressItemInfo.textContent = task.current_title ? `Song: "${task.current_title}" (${completed} of ${total} finished)` : `Processing tracks (${completed} of ${total} finished)...`;
                         } else {
                             progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Downloading media stream...</span>`;
                             progressItemInfo.textContent = task.current_title || params.title;
                         }
                         progressSpeed.textContent = task.speed || '';
                     } else if (task.status === 'converting') {
-                        progressBarFill.style.width = '96%';
-                        progressPercent.textContent = '96%';
-                        progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Transcoding audio with FFmpeg...</span>`;
-                        progressItemInfo.textContent = `Encoding into ${params.codec.toUpperCase()} (${params.bitrate} kbps) with metadata tags`;
+                        if (isPlaylist) {
+                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Transcoding Song ${current} of ${total} • <b>${completed}/${total} Completed</b></span>`;
+                            progressItemInfo.textContent = `Encoding into ${params.codec.toUpperCase()} (${params.bitrate} kbps) • ${completed} of ${total} finished`;
+                        } else {
+                            progressBarFill.style.width = '96%';
+                            progressPercent.textContent = '96%';
+                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Transcoding audio with FFmpeg...</span>`;
+                            progressItemInfo.textContent = `Encoding into ${params.codec.toUpperCase()} (${params.bitrate} kbps) with metadata tags`;
+                        }
                     } else if (task.status === 'zipping') {
                         progressBarFill.style.width = '98%';
                         progressPercent.textContent = '98%';
-                        progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Compressing into ZIP archive...</span>`;
-                        progressItemInfo.textContent = 'Finalizing playlist package...';
+                        if (isPlaylist) {
+                            completedCounterText.textContent = `📦 ${total} of ${total} Ready`;
+                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Packaging all ${total} songs into ZIP archive...</span>`;
+                            progressItemInfo.textContent = `All ${total} tracks converted! Generating final package...`;
+                        } else {
+                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Compressing into ZIP archive...</span>`;
+                            progressItemInfo.textContent = 'Finalizing package...';
+                        }
                     } else if (task.status === 'completed') {
                         clearInterval(pollingInterval);
                         progressBarFill.style.width = '100%';
                         progressPercent.textContent = '100%';
-                        progressStatusText.innerHTML = `<span style="color: var(--success);">🎉 Download Complete!</span>`;
-                        progressItemInfo.textContent = `File ready: ${task.filename}`;
+                        if (isPlaylist) {
+                            completedCounterText.textContent = `✅ ${total} of ${total} Completed`;
+                            progressStatusText.innerHTML = `<span style="color: var(--success);">🎉 All ${total} Songs Completed!</span>`;
+                            progressItemInfo.textContent = `Playlist archive ready: ${task.filename} (${total} songs included)`;
+                        } else {
+                            progressStatusText.innerHTML = `<span style="color: var(--success);">🎉 Download Complete!</span>`;
+                            progressItemInfo.textContent = `File ready: ${task.filename}`;
+                        }
                         progressSpeed.textContent = 'Completed';
 
                         // Auto-trigger browser download

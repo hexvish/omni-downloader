@@ -52,6 +52,10 @@ def handle_start_download():
     bitrate = request.form.get('bitrate', '320')
     resolution = request.form.get('resolution', '1080p')
     is_playlist = request.form.get('is_playlist', 'false').lower() in ('true', '1')
+    try:
+        total_items = int(request.form.get('total_items', 1))
+    except Exception:
+        total_items = 1
 
     if not url:
         return jsonify({'status': 'error', 'message': 'Missing URL parameter'}), 400
@@ -63,7 +67,8 @@ def handle_start_download():
             codec=codec,
             bitrate=bitrate,
             resolution=resolution,
-            is_playlist=is_playlist
+            is_playlist=is_playlist,
+            total_items=total_items
         )
         return jsonify({'success': True, 'task_id': task_id})
     except Exception as e:
@@ -86,6 +91,10 @@ def download():
     bitrate = request.form.get('bitrate', '320')
     resolution = request.form.get('resolution') or format_id
     is_playlist = request.form.get('is_playlist', 'false').lower() in ('true', '1')
+    try:
+        total_items = int(request.form.get('total_items', 1))
+    except Exception:
+        total_items = 1
 
     if not url:
         return jsonify({'status': 'error', 'message': 'Missing parameters'}), 400
@@ -97,7 +106,8 @@ def download():
             codec=codec,
             bitrate=bitrate,
             resolution=resolution,
-            is_playlist=is_playlist
+            is_playlist=is_playlist,
+            total_items=total_items
         )
         while True:
             status = get_task_status(task_id)

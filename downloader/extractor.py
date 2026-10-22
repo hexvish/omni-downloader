@@ -139,12 +139,12 @@ def _run_single_download(task_id, url, download_type, codec, bitrate, resolution
             tasks[task_id]['status'] = 'error'
             tasks[task_id]['error'] = str(e)
 
-def _run_playlist_download(task_id, url, download_type, codec, bitrate, resolution):
+def _run_playlist_download(task_id, url, download_type, codec, bitrate, resolution, initial_total=1):
     playlist_id = secrets.token_hex(4)
     playlist_dir = os.path.join(DOWNLOAD_FOLDER, f"playlist_{playlist_id}")
     os.makedirs(playlist_dir, exist_ok=True)
 
-    track_stats = {'current_index': 1, 'total_items': 1}
+    track_stats = {'current_index': 1, 'total_items': initial_total or 1, 'completed_items': 0}
 
     def progress_hook(d):
         if d.get('status') == 'downloading':
@@ -153,6 +153,7 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
             total = info_dict.get('n_entries') or track_stats['total_items']
             track_stats['current_index'] = idx
             track_stats['total_items'] = total
+            track_stats['completed_items'] = max(track_stats['completed_items'], idx - 1)
 
             title = info_dict.get('title') or ''
             speed = d.get('speed') or 0
@@ -168,6 +169,7 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
                 if task_id in tasks:
                     tasks[task_id]['current_item'] = idx
                     tasks[task_id]['total_items'] = total
+                    tasks[task_id]['completed_items'] = track_stats['completed_items']
                     tasks[task_id]['current_title'] = title
                     tasks[task_id]['speed'] = speed_str
                     tasks[task_id]['progress'] = min(95.0, overall_pct)
@@ -176,6 +178,17 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
             with tasks_lock:
                 if task_id in tasks:
                     tasks[task_id]['status'] = 'converting'
+                    tasks[task_id]['current_item'] = track_stats['current_index']
+                    tasks[task_id]['total_items'] = track_stats['total_items']
+                    tasks[task_id]['completed_items'] = track_stats['completed_items']
+
+    def postprocessor_hook(d):
+        if d.get('status') == 'finished':
+            idx = track_stats['current_index']
+            with tasks_lock:
+                if task_id in tasks:
+                    track_stats['completed_items'] = max(track_stats['completed_items'], idx)
+                    tasks[task_id]['completed_items'] = track_stats['completed_items']
 
     outtmpl = os.path.join(playlist_dir, '%(playlist_index)02d - %(title)s.%(ext)s')
 
@@ -184,6 +197,7 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
         'outtmpl': outtmpl,
         'ignoreerrors': True,
         'progress_hooks': [progress_hook],
+        'postprocessor_hooks': [postprocessor_hook],
     }
 
     if download_type == 'audio':
@@ -224,6 +238,7 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
         with tasks_lock:
             tasks[task_id]['status'] = 'zipping'
             tasks[task_id]['progress'] = 98.0
+            tasks[task_id]['completed_items'] = track_stats['total_items']
 
         # Safe zip filename
         safe_title = "".join(c for c in (playlist_title or 'Playlist') if c.isalnum() or c in (' ', '_', '-')).strip()
@@ -246,6 +261,7 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
         with tasks_lock:
             tasks[task_id]['status'] = 'completed'
             tasks[task_id]['progress'] = 100.0
+            tasks[task_id]['completed_items'] = track_stats['total_items']
             tasks[task_id]['filename'] = zip_filename
             tasks[task_id]['download_url'] = f'/get-file/{zip_filename}'
     except Exception as e:
@@ -255,21 +271,24 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
             tasks[task_id]['status'] = 'error'
             tasks[task_id]['error'] = str(e)
 
-def start_download_task(url, download_type='audio', codec='mp3', bitrate='320', resolution='1080p', is_playlist=False):
+def start_download_task(url, download_type='audio', codec='mp3', bitrate='320', resolution='1080p', is_playlist=False, total_items=1):
     """
     Start an asynchronous download task in a background worker thread.
     Returns the unique task_id.
     """
     task_id = secrets.token_hex(8)
+    initial_total = int(total_items) if total_items else 1
     with tasks_lock:
         tasks[task_id] = {
             'task_id': task_id,
             'status': 'starting',
             'progress': 0.0,
             'current_item': 1,
-            'total_items': 1,
+            'total_items': initial_total,
+            'completed_items': 0,
             'current_title': '',
             'speed': '',
+            'is_playlist': is_playlist,
             'filename': None,
             'download_url': None,
             'error': None,
@@ -279,7 +298,7 @@ def start_download_task(url, download_type='audio', codec='mp3', bitrate='320', 
     if is_playlist:
         worker = threading.Thread(
             target=_run_playlist_download,
-            args=(task_id, url, download_type, codec, bitrate, resolution),
+            args=(task_id, url, download_type, codec, bitrate, resolution, initial_total),
             daemon=True
         )
     else:
