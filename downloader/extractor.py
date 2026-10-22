@@ -110,9 +110,15 @@ def cleanup_playlist_directory(playlist_dir, fallback_ext='mp4'):
 
 def _run_single_download(task_id, url, download_type, codec, bitrate, resolution):
     random_id = secrets.token_hex(4)
+    with tasks_lock:
+        if task_id in tasks:
+            tasks[task_id]['random_id'] = random_id
     outtmpl = os.path.join(DOWNLOAD_FOLDER, f'%(title)s__{random_id}.%(ext)s')
 
     def progress_hook(d):
+        with tasks_lock:
+            if task_id in tasks and tasks[task_id].get('cancelled'):
+                raise yt_dlp.utils.DownloadCancelled("Download cancelled by user.")
         if d.get('status') == 'downloading':
             total = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
             downloaded = d.get('downloaded_bytes') or 0
@@ -126,6 +132,8 @@ def _run_single_download(task_id, url, download_type, codec, bitrate, resolution
                     tasks[task_id]['status'] = 'downloading'
         elif d.get('status') == 'finished':
             with tasks_lock:
+                if task_id in tasks and tasks[task_id].get('cancelled'):
+                    raise yt_dlp.utils.DownloadCancelled("Download cancelled by user.")
                 if task_id in tasks:
                     tasks[task_id]['progress'] = 99.0
                     tasks[task_id]['status'] = 'converting'
@@ -177,6 +185,18 @@ def _run_single_download(task_id, url, download_type, codec, bitrate, resolution
             if 'entries' in info:
                 info = info['entries'][0]
 
+        with tasks_lock:
+            if task_id in tasks and tasks[task_id].get('cancelled'):
+                for f in os.listdir(DOWNLOAD_FOLDER):
+                    if f"__{random_id}." in f or f"__{random_id}" in f:
+                        try:
+                            os.remove(os.path.join(DOWNLOAD_FOLDER, f))
+                        except Exception:
+                            pass
+                tasks[task_id]['status'] = 'cancelled'
+                tasks[task_id]['error'] = 'Download cancelled by user.'
+                return
+
         matched_file = find_file_by_id(DOWNLOAD_FOLDER, random_id)
         if not matched_file:
             raise FileNotFoundError("Could not locate the downloaded file on disk.")
@@ -186,20 +206,42 @@ def _run_single_download(task_id, url, download_type, codec, bitrate, resolution
             tasks[task_id]['progress'] = 100.0
             tasks[task_id]['filename'] = matched_file
             tasks[task_id]['download_url'] = f'/get-file/{matched_file}'
-    except Exception as e:
-        print(f">>> Single download error for task {task_id}: {e}")
+    except (yt_dlp.utils.DownloadCancelled, Exception) as e:
+        is_cancelled = False
         with tasks_lock:
-            tasks[task_id]['status'] = 'error'
-            tasks[task_id]['error'] = str(e)
+            if task_id in tasks and tasks[task_id].get('cancelled'):
+                is_cancelled = True
+        if isinstance(e, yt_dlp.utils.DownloadCancelled) or is_cancelled:
+            print(f">>> Task {task_id} cancelled by user. Cleaning up files...")
+            for f in os.listdir(DOWNLOAD_FOLDER):
+                if f"__{random_id}." in f or f"__{random_id}" in f:
+                    try:
+                        os.remove(os.path.join(DOWNLOAD_FOLDER, f))
+                    except Exception:
+                        pass
+            with tasks_lock:
+                tasks[task_id]['status'] = 'cancelled'
+                tasks[task_id]['error'] = 'Download cancelled by user.'
+        else:
+            print(f">>> Single download error for task {task_id}: {e}")
+            with tasks_lock:
+                tasks[task_id]['status'] = 'error'
+                tasks[task_id]['error'] = str(e)
 
 def _run_playlist_download(task_id, url, download_type, codec, bitrate, resolution, initial_total=1):
     playlist_id = secrets.token_hex(4)
     playlist_dir = os.path.join(DOWNLOAD_FOLDER, f"playlist_{playlist_id}")
     os.makedirs(playlist_dir, exist_ok=True)
+    with tasks_lock:
+        if task_id in tasks:
+            tasks[task_id]['playlist_dir'] = playlist_dir
 
     track_stats = {'current_index': 1, 'total_items': initial_total or 1, 'completed_items': 0}
 
     def progress_hook(d):
+        with tasks_lock:
+            if task_id in tasks and tasks[task_id].get('cancelled'):
+                raise yt_dlp.utils.DownloadCancelled("Download cancelled by user.")
         if d.get('status') == 'downloading':
             info_dict = d.get('info_dict', {})
             idx = info_dict.get('playlist_index') or track_stats['current_index']
@@ -229,6 +271,8 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
                     tasks[task_id]['status'] = 'downloading'
         elif d.get('status') == 'finished':
             with tasks_lock:
+                if task_id in tasks and tasks[task_id].get('cancelled'):
+                    raise yt_dlp.utils.DownloadCancelled("Download cancelled by user.")
                 if task_id in tasks:
                     tasks[task_id]['status'] = 'converting'
                     tasks[task_id]['current_item'] = track_stats['current_index']
@@ -236,6 +280,9 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
                     tasks[task_id]['completed_items'] = track_stats['completed_items']
 
     def postprocessor_hook(d):
+        with tasks_lock:
+            if task_id in tasks and tasks[task_id].get('cancelled'):
+                raise yt_dlp.utils.DownloadCancelled("Download cancelled by user.")
         if d.get('status') == 'finished':
             idx = track_stats['current_index']
             with tasks_lock:
@@ -293,6 +340,13 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
             playlist_title = playlist_info.get('title') if playlist_info else 'Playlist'
 
         with tasks_lock:
+            if task_id in tasks and tasks[task_id].get('cancelled'):
+                shutil.rmtree(playlist_dir, ignore_errors=True)
+                tasks[task_id]['status'] = 'cancelled'
+                tasks[task_id]['error'] = 'Download cancelled by user.'
+                return
+
+        with tasks_lock:
             tasks[task_id]['status'] = 'zipping'
             tasks[task_id]['progress'] = 98.0
             tasks[task_id]['completed_items'] = track_stats['total_items']
@@ -305,6 +359,9 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
         safe_title = safe_title.replace(' ', '_') or 'Playlist'
         zip_filename = f"{safe_title}_{playlist_id}.zip"
         zip_path = os.path.join(DOWNLOAD_FOLDER, zip_filename)
+        with tasks_lock:
+            if task_id in tasks:
+                tasks[task_id]['zip_path'] = zip_path
 
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             for root, dirs, files in os.walk(playlist_dir):
@@ -331,12 +388,62 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
             tasks[task_id]['completed_items'] = track_stats['total_items']
             tasks[task_id]['filename'] = zip_filename
             tasks[task_id]['download_url'] = f'/get-file/{zip_filename}'
-    except Exception as e:
-        print(f">>> Playlist download error for task {task_id}: {e}")
+    except (yt_dlp.utils.DownloadCancelled, Exception) as e:
         shutil.rmtree(playlist_dir, ignore_errors=True)
+        if 'zip_path' in locals() and os.path.exists(zip_path):
+            try:
+                os.remove(zip_path)
+            except Exception:
+                pass
+        is_cancelled = False
         with tasks_lock:
-            tasks[task_id]['status'] = 'error'
-            tasks[task_id]['error'] = str(e)
+            if task_id in tasks and tasks[task_id].get('cancelled'):
+                is_cancelled = True
+        if isinstance(e, yt_dlp.utils.DownloadCancelled) or is_cancelled:
+            print(f">>> Playlist task {task_id} cancelled by user. Cleaned up.")
+            with tasks_lock:
+                tasks[task_id]['status'] = 'cancelled'
+                tasks[task_id]['error'] = 'Download cancelled by user.'
+        else:
+            print(f">>> Playlist download error for task {task_id}: {e}")
+            with tasks_lock:
+                tasks[task_id]['status'] = 'error'
+                tasks[task_id]['error'] = str(e)
+
+def cancel_task(task_id):
+    """
+    Signals a task to cancel, marks status as 'cancelled',
+    and removes any temporary/partial files created by it immediately.
+    """
+    with tasks_lock:
+        if task_id in tasks:
+            tasks[task_id]['cancelled'] = True
+            tasks[task_id]['status'] = 'cancelled'
+            tasks[task_id]['error'] = 'Download cancelled by user.'
+
+            # Immediate disk cleanup of partial/temporary files
+            random_id = tasks[task_id].get('random_id')
+            if random_id and os.path.exists(DOWNLOAD_FOLDER):
+                for f in os.listdir(DOWNLOAD_FOLDER):
+                    if f"__{random_id}." in f or f"__{random_id}" in f:
+                        try:
+                            os.remove(os.path.join(DOWNLOAD_FOLDER, f))
+                        except Exception:
+                            pass
+
+            playlist_dir = tasks[task_id].get('playlist_dir')
+            if playlist_dir and os.path.exists(playlist_dir):
+                shutil.rmtree(playlist_dir, ignore_errors=True)
+
+            zip_path = tasks[task_id].get('zip_path')
+            if zip_path and os.path.exists(zip_path):
+                try:
+                    os.remove(zip_path)
+                except Exception:
+                    pass
+
+            return True
+    return False
 
 def start_download_task(url, download_type='audio', codec='mp3', bitrate='320', resolution='1080p', is_playlist=False, total_items=1):
     """

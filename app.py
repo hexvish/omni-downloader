@@ -10,7 +10,8 @@ from downloader.extractor import (
     extract_media_info, 
     download_media, 
     start_download_task, 
-    get_task_status
+    get_task_status,
+    cancel_task
 )
 from downloader.formatter import format_extraction_results
 from utils.validators import validate_url, sanitize_input
@@ -81,6 +82,11 @@ def handle_task_status(task_id):
     if not status:
         return jsonify({'status': 'error', 'message': 'Task not found'}), 404
     return jsonify(status)
+
+@app.route('/cancel_download/<task_id>', methods=['POST'])
+def handle_cancel_download(task_id):
+    success = cancel_task(task_id)
+    return jsonify({'success': success, 'task_id': task_id})
 
 @app.route('/download', methods=['POST'])
 def download():

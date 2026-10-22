@@ -724,6 +724,24 @@
             color: #fff;
         }
 
+        .btn-cancel-task {
+            padding: 3px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-cancel-task:hover {
+            background: rgba(239, 68, 68, 0.35);
+            color: #ffffff;
+            border-color: #ef4444;
+        }
+
         .progress-bar-bg {
             width: 100%;
             height: 8px;
@@ -1325,6 +1343,7 @@
                             <span id="counter-text-${taskId}">${itemIcon} 0 of ${totalExpected} Completed</span>
                         </div>
                         <div id="percent-${taskId}" class="progress-percent">0%</div>
+                        <button type="button" class="btn-cancel-task" id="btn-cancel-${taskId}" onclick="cancelDownloadTask('${taskId}')" title="Cancel this download">Cancel</button>
                         <button type="button" class="btn-dismiss-task" id="btn-dismiss-${taskId}" onclick="dismissTask('${taskId}')" title="Dismiss">&times;</button>
                     </div>
                 </div>
@@ -1345,6 +1364,42 @@
             downloadsManager.style.display = 'block';
             card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             return card;
+        }
+
+        async function cancelDownloadTask(taskId) {
+            const btnCancel = document.getElementById(`btn-cancel-${taskId}`);
+            if (btnCancel) {
+                btnCancel.disabled = true;
+                btnCancel.textContent = 'Cancelling...';
+            }
+            try {
+                await fetch(`/cancel_download/${taskId}`, { method: 'POST' });
+            } catch (e) {
+                console.error('Cancel request error:', e);
+            }
+
+            if (activeTasks[taskId]) {
+                if (activeTasks[taskId].interval) clearInterval(activeTasks[taskId].interval);
+                activeTasks[taskId].completed = true;
+            }
+
+            const statusText = document.getElementById(`status-text-${taskId}`);
+            const itemInfo = document.getElementById(`item-info-${taskId}`);
+            const speed = document.getElementById(`speed-${taskId}`);
+            const btnDismiss = document.getElementById(`btn-dismiss-${taskId}`);
+            const barFill = document.getElementById(`bar-fill-${taskId}`);
+
+            if (statusText) statusText.innerHTML = `<span style="color: #f87171;">🚫 Cancelled by user</span>`;
+            if (itemInfo) itemInfo.textContent = 'Download cancelled. Temporary files cleaned up.';
+            if (speed) speed.textContent = 'Cancelled';
+            if (barFill) {
+                barFill.style.background = '#ef4444';
+                barFill.style.boxShadow = 'none';
+            }
+            if (btnCancel) btnCancel.style.display = 'none';
+            if (btnDismiss) btnDismiss.style.display = 'inline-block';
+
+            updateActiveTasksCount();
         }
 
         async function startDownloadProcess(params) {
@@ -1389,6 +1444,7 @@
             const speed = document.getElementById(`speed-${taskId}`);
             const successAction = document.getElementById(`success-action-${taskId}`);
             const btnSave = document.getElementById(`btn-save-${taskId}`);
+            const btnCancel = document.getElementById(`btn-cancel-${taskId}`);
             const btnDismiss = document.getElementById(`btn-dismiss-${taskId}`);
 
             const intervalId = setInterval(async () => {
@@ -1471,6 +1527,7 @@
                                 : `File ready: ${task.filename}`;
                         }
                         if (speed) speed.textContent = 'Completed';
+                        if (btnCancel) btnCancel.style.display = 'none';
                         if (btnDismiss) btnDismiss.style.display = 'inline-block';
 
                         // Auto-trigger browser download
@@ -1486,6 +1543,20 @@
                         document.body.appendChild(autoAnchor);
                         autoAnchor.click();
                         document.body.removeChild(autoAnchor);
+                    } else if (task.status === 'cancelled') {
+                        clearInterval(intervalId);
+                        if (activeTasks[taskId]) activeTasks[taskId].completed = true;
+                        updateActiveTasksCount();
+
+                        if (statusText) statusText.innerHTML = `<span style="color: #f87171;">🚫 Download Cancelled</span>`;
+                        if (itemInfo) itemInfo.textContent = 'Download cancelled. Temporary files cleaned up.';
+                        if (speed) speed.textContent = 'Cancelled';
+                        if (barFill) {
+                            barFill.style.background = '#ef4444';
+                            barFill.style.boxShadow = 'none';
+                        }
+                        if (btnCancel) btnCancel.style.display = 'none';
+                        if (btnDismiss) btnDismiss.style.display = 'inline-block';
                     } else if (task.status === 'error') {
                         clearInterval(intervalId);
                         if (activeTasks[taskId]) activeTasks[taskId].completed = true;
@@ -1493,6 +1564,7 @@
 
                         if (statusText) statusText.innerHTML = `<span style="color: var(--error);">❌ Error Occurred</span>`;
                         if (itemInfo) itemInfo.textContent = task.error || 'Download failed.';
+                        if (btnCancel) btnCancel.style.display = 'none';
                         if (btnDismiss) btnDismiss.style.display = 'inline-block';
                     }
                 } catch (e) {
