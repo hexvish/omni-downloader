@@ -81,6 +81,13 @@ def build_app():
                 arcname = os.path.relpath(file_path, dist_dir)
                 zipf.write(file_path, arcname)
 
+    # 6. Clean up intermediate build directory
+    if os.path.exists(build_dir):
+        try:
+            shutil.rmtree(build_dir, ignore_errors=True)
+        except Exception:
+            pass
+
     print("\n" + "=" * 60)
     print(" [SUCCESS] Omni Downloader v1.0 standalone build completed!")
     print(f" Output folder: {output_app_dir}")

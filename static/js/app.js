@@ -419,9 +419,18 @@ function createTaskCard(taskId, params, totalExpected) {
             <span id="speed-${taskId}">-- MB/s</span>
         </div>
         <div id="success-action-${taskId}" class="progress-success-action" style="display: none;">
-            <a id="btn-save-${taskId}" href="#" class="btn-save-file" download>
-                <span>💾 Save Downloaded File</span>
-            </a>
+            <button type="button" class="btn-save-file" id="btn-save-${taskId}" onclick="handleSaveFile('${taskId}')" title="Choose where to save this file">
+                <span>💾 Save As...</span>
+            </button>
+            <button type="button" class="btn-action-secondary" id="btn-quick-save-${taskId}" onclick="handleQuickSave('${taskId}')" title="Save directly to Windows Downloads folder">
+                <span>📥 Save to Downloads</span>
+            </button>
+            <button type="button" class="btn-action-secondary" id="btn-open-${taskId}" onclick="handleOpenFile('${taskId}')" title="Play or Open File">
+                <span>▶ Open</span>
+            </button>
+            <button type="button" class="btn-action-secondary" id="btn-reveal-${taskId}" onclick="handleRevealFile('${taskId}')" title="Show in File Explorer">
+                <span>📂 Show in Folder</span>
+            </button>
         </div>
     `;
     downloadsList.prepend(card);
@@ -594,19 +603,23 @@ function pollTaskStatus(taskId, params, fallbackTotal = 1) {
                 if (btnCancel) btnCancel.style.display = 'none';
                 if (btnDismiss) btnDismiss.style.display = 'inline-block';
 
-                // Auto-trigger browser download
-                if (btnSave) {
-                    btnSave.href = task.download_url;
-                    btnSave.download = task.filename;
+                // Store filename on active task
+                if (activeTasks[taskId]) {
+                    activeTasks[taskId].filename = task.filename;
+                    activeTasks[taskId].download_url = task.download_url;
                 }
-                if (successAction) successAction.style.display = 'block';
 
-                const autoAnchor = document.createElement('a');
-                autoAnchor.href = task.download_url;
-                autoAnchor.download = task.filename;
-                document.body.appendChild(autoAnchor);
-                autoAnchor.click();
-                document.body.removeChild(autoAnchor);
+                if (successAction) successAction.style.display = 'flex';
+
+                // Auto-trigger browser download for standard browser users
+                try {
+                    const autoAnchor = document.createElement('a');
+                    autoAnchor.href = task.download_url;
+                    autoAnchor.download = task.filename;
+                    document.body.appendChild(autoAnchor);
+                    autoAnchor.click();
+                    document.body.removeChild(autoAnchor);
+                } catch (e) {}
             } else if (task.status === 'cancelled') {
                 clearInterval(intervalId);
                 if (activeTasks[taskId]) activeTasks[taskId].completed = true;
@@ -654,6 +667,94 @@ async function openDownloadsFolder() {
         }
     } catch (e) {
         showStatus('Error opening downloads folder.', 'error');
+    }
+}
+
+// --- Desktop File Handlers ---
+async function handleSaveFile(taskId) {
+    const task = activeTasks[taskId];
+    if (!task || !task.filename) return;
+    const btn = document.getElementById(`btn-save-${taskId}`);
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) btn.innerHTML = `<span>⏳ Saving...</span>`;
+
+    try {
+        const formData = new FormData();
+        formData.append('filename', task.filename);
+        formData.append('mode', 'dialog');
+
+        const res = await fetch('/api/save_file', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success) {
+            showStatus(`File saved to: ${data.saved_to}`, 'success');
+            if (btn) btn.innerHTML = `<span>✅ Saved</span>`;
+        } else if (data.cancelled) {
+            if (btn) btn.innerHTML = originalText;
+        } else {
+            showStatus(`Save error: ${data.error || 'Failed'}`, 'error');
+            if (btn) btn.innerHTML = originalText;
+        }
+    } catch (e) {
+        showStatus('Error saving file.', 'error');
+        if (btn) btn.innerHTML = originalText;
+    }
+}
+
+async function handleQuickSave(taskId) {
+    const task = activeTasks[taskId];
+    if (!task || !task.filename) return;
+    const btn = document.getElementById(`btn-quick-save-${taskId}`);
+    if (btn) btn.innerHTML = `<span>⏳ Saving...</span>`;
+
+    try {
+        const formData = new FormData();
+        formData.append('filename', task.filename);
+        formData.append('mode', 'quick');
+
+        const res = await fetch('/api/save_file', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success) {
+            showStatus(`File saved directly to: ${data.saved_to}`, 'success');
+            if (btn) btn.innerHTML = `<span>✅ Saved in Downloads</span>`;
+        } else {
+            showStatus(`Save error: ${data.error || 'Failed'}`, 'error');
+            if (btn) btn.innerHTML = `<span>📥 Save to Downloads</span>`;
+        }
+    } catch (e) {
+        showStatus('Error saving file to Downloads.', 'error');
+        if (btn) btn.innerHTML = `<span>📥 Save to Downloads</span>`;
+    }
+}
+
+async function handleOpenFile(taskId) {
+    const task = activeTasks[taskId];
+    if (!task || !task.filename) return;
+    try {
+        const formData = new FormData();
+        formData.append('filename', task.filename);
+        const res = await fetch('/api/open_file', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!data.success) {
+            showStatus(`Could not open file: ${data.error || 'Unknown error'}`, 'error');
+        }
+    } catch (e) {
+        showStatus('Error opening file.', 'error');
+    }
+}
+
+async function handleRevealFile(taskId) {
+    const task = activeTasks[taskId];
+    if (!task || !task.filename) return;
+    try {
+        const formData = new FormData();
+        formData.append('filename', task.filename);
+        const res = await fetch('/api/reveal_file', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!data.success) {
+            showStatus(`Could not show in folder: ${data.error || 'Unknown error'}`, 'error');
+        }
+    } catch (e) {
+        showStatus('Error showing file in folder.', 'error');
     }
 }
 

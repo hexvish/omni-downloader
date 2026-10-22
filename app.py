@@ -1,4 +1,7 @@
 import os
+import sys
+import shutil
+import subprocess
 import time
 import threading
 from flask import Flask, render_template, request, jsonify, send_from_directory
@@ -99,11 +102,99 @@ def handle_open_downloads_folder():
         if os.name == 'nt':
             os.startfile(DOWNLOAD_FOLDER)
         elif sys.platform == 'darwin':
-            import subprocess
             subprocess.run(['open', DOWNLOAD_FOLDER])
         else:
-            import subprocess
             subprocess.run(['xdg-open', DOWNLOAD_FOLDER])
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/save_file', methods=['POST'])
+def handle_save_file():
+    filename = request.form.get('filename')
+    if not filename:
+        return jsonify({'success': False, 'error': 'Missing filename'}), 400
+    src_path = os.path.join(DOWNLOAD_FOLDER, filename)
+    if not os.path.exists(src_path):
+        return jsonify({'success': False, 'error': 'File not found on disk'}), 404
+
+    user_downloads = os.path.join(os.path.expanduser('~'), 'Downloads')
+    mode = request.form.get('mode', 'dialog')
+    
+    chosen_path = None
+    if mode == 'dialog':
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes('-topmost', True)
+            chosen_path = filedialog.asksaveasfilename(
+                initialdir=user_downloads,
+                initialfile=filename,
+                title="Save Downloaded File"
+            )
+            root.destroy()
+        except Exception as e:
+            print(f">>> File dialog fallback: {e}")
+
+        # If user cancelled dialog
+        if chosen_path == "":
+            return jsonify({'success': False, 'cancelled': True})
+
+    # If dialog selected a path, copy to chosen_path
+    if chosen_path:
+        dest_path = chosen_path
+    else:
+        # Fallback: copy directly to user's Downloads folder
+        dest_path = os.path.join(user_downloads, filename)
+        base, ext = os.path.splitext(filename)
+        c = 1
+        while os.path.exists(dest_path):
+            dest_path = os.path.join(user_downloads, f"{base} ({c}){ext}")
+            c += 1
+
+    try:
+        shutil.copy2(src_path, dest_path)
+        return jsonify({'success': True, 'saved_to': dest_path})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/open_file', methods=['POST'])
+def handle_open_file():
+    filename = request.form.get('filename')
+    if not filename:
+        return jsonify({'success': False, 'error': 'Missing filename'}), 400
+    src_path = os.path.join(DOWNLOAD_FOLDER, filename)
+    if not os.path.exists(src_path):
+        return jsonify({'success': False, 'error': 'File not found'}), 404
+    try:
+        if os.name == 'nt':
+            os.startfile(src_path)
+        elif sys.platform == 'darwin':
+            subprocess.run(['open', src_path])
+        else:
+            subprocess.run(['xdg-open', src_path])
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/reveal_file', methods=['POST'])
+def handle_reveal_file():
+    filename = request.form.get('filename')
+    if not filename:
+        return jsonify({'success': False, 'error': 'Missing filename'}), 400
+    src_path = os.path.join(DOWNLOAD_FOLDER, filename)
+    if not os.path.exists(src_path):
+        return jsonify({'success': False, 'error': 'File not found'}), 404
+    try:
+        if os.name == 'nt':
+            norm_path = os.path.normpath(src_path)
+            subprocess.Popen(f'explorer /select,"{norm_path}"', shell=True)
+        elif sys.platform == 'darwin':
+            subprocess.Popen(['open', '-R', src_path])
+        else:
+            subprocess.Popen(['xdg-open', os.path.dirname(src_path)])
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
