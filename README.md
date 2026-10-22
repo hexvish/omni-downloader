@@ -45,6 +45,7 @@ omni-downloader/
 ├── app.py                  # Flask server and API route handlers
 ├── config.py               # Global settings & FFmpeg discovery
 ├── requirements.txt        # Python dependencies
+├── run.bat                 # One-click Windows launcher & auto-updater
 ├── downloader/
 │   ├── extractor.py        # yt-dlp extraction & background task worker
 │   ├── formatter.py        # Audio/video format & playlist parsers
@@ -74,13 +75,25 @@ Omni Downloader leverages `yt-dlp`, supporting hundreds of platforms including:
 
 ## ⚙️ Installation & Usage
 
-### 1. Clone the repository
+### 🚀 Quick Start (Windows - One Click)
+Simply double-click **`run.bat`** (or run `run.bat` in Command Prompt / PowerShell).
+It will automatically:
+1. Verify Python and setup `.venv` if not already created.
+2. Check and install all dependencies from `requirements.txt`.
+3. Auto-update `yt-dlp` and `imageio-ffmpeg` to their latest releases.
+4. Launch the local web server and automatically open **http://localhost:5000** in your default browser.
+
+---
+
+### Manual Setup (Cross-Platform)
+
+#### 1. Clone the repository
 ```bash
 git clone https://github.com/hexvish/omni-downloader.git
 cd omni-downloader
 ```
 
-### 2. Setup a virtual environment (Recommended)
+#### 2. Setup a virtual environment
 ```bash
 python -m venv .venv
 
@@ -91,19 +104,19 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3. Install dependencies
+#### 3. Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 > [!NOTE]
 > FFmpeg is automatically provided through `imageio-ffmpeg` or your system `PATH`. No manual binary installation is necessary.
 
-### 4. Run the application
+#### 4. Run the application
 ```bash
 python app.py
 ```
 
-### 5. Access the Web UI
+#### 5. Access the Web UI
 Open your browser and navigate to:
 ```
 http://localhost:5000
