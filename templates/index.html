@@ -800,34 +800,13 @@
                     </div>
                 </div>
 
-                <!-- Playlist Option Banner (if playlist detected) -->
-                <div id="playlistBanner" class="playlist-banner">
-                    <div class="playlist-banner-header">
-                        <div class="playlist-badge-title">
-                            <span>📦 Full Playlist Detected</span>
-                            <span id="playlistTrackCountBadge" class="mini-badge playlist-badge">0 Tracks</span>
-                        </div>
-                    </div>
-                    <p style="font-size: 0.86rem; color: #ddd6fe; margin-bottom: 1rem;">
-                        You can download all tracks packaged together in a single ZIP file, or select individual songs below.
-                    </p>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button type="button" id="btnWholePlaylistMode" class="btn-action" style="padding: 10px 18px; font-size: 0.88rem;" onclick="activatePlaylistMode()">
-                            📦 Download Whole Playlist (ZIP)
-                        </button>
-                        <button type="button" id="btnSingleSongMode" class="btn-clear" style="padding: 10px 18px; font-size: 0.88rem;" onclick="activateSingleMode()">
-                            🎵 Pick Single Song
-                        </button>
-                    </div>
-                </div>
-
                 <!-- Tabs: Audio vs Video -->
                 <div class="tabs-header">
                     <button type="button" id="tabBtnAudio" class="tab-btn active music-tab" onclick="switchTab('audio')">
-                        <span>🎵 Audio / YouTube Music</span>
+                        <span>🎵 Audio</span>
                     </button>
                     <button type="button" id="tabBtnVideo" class="tab-btn" onclick="switchTab('video')">
-                        <span>🎬 Video (MP4)</span>
+                        <span>🎬 Video</span>
                     </button>
                 </div>
 
@@ -853,8 +832,22 @@
 
                 <!-- Video Tab Content -->
                 <div id="videoTabContent" style="display: none;">
-                    <div class="option-group-title">Available Video Resolutions</div>
-                    <div class="video-format-list" id="videoFormatList"></div>
+                    <div class="option-group-title">1. Choose Video Format</div>
+                    <div class="format-grid" id="videoFormatGrid"></div>
+
+                    <div class="option-group-title">2. Choose Video Resolution</div>
+                    <div class="bitrate-row" id="videoResRow"></div>
+
+                    <!-- Action Box -->
+                    <div class="action-box">
+                        <div class="action-info">
+                            <div id="videoActionTargetText" class="action-target">Ready to download</div>
+                            <div id="videoActionSpecsText" class="action-specs">MP4 • 1080p</div>
+                        </div>
+                        <button type="button" id="btnDownloadVideo" class="btn-download-main" style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); box-shadow: 0 4px 15px rgba(6, 182, 212, 0.35);" onclick="triggerDownload('video')">
+                            <span>⬇ Download Video</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Playlist Tracklist (shown if playlist) -->
@@ -906,8 +899,8 @@
         let mediaData = null;
         let selectedFormat = 'mp3';
         let selectedBitrate = '320';
+        let selectedVideoFormat = 'mp4';
         let selectedVideoRes = '1080p';
-        let isDownloadingPlaylist = false;
         let targetDownloadUrl = '';
         let pollingInterval = null;
 
@@ -924,17 +917,27 @@
         const mediaUploader = document.getElementById('mediaUploader');
         const mediaTypeBadge = document.getElementById('mediaTypeBadge');
         const mediaDurationBadge = document.getElementById('mediaDurationBadge');
-        const playlistBanner = document.getElementById('playlistBanner');
-        const playlistTrackCountBadge = document.getElementById('playlistTrackCountBadge');
+
+        // Audio Tab Elements
         const formatGrid = document.getElementById('formatGrid');
         const bitrateRow = document.getElementById('bitrateRow');
         const actionTargetText = document.getElementById('actionTargetText');
         const actionSpecsText = document.getElementById('actionSpecsText');
         const btnDownloadAudio = document.getElementById('btnDownloadAudio');
-        const videoFormatList = document.getElementById('videoFormatList');
+
+        // Video Tab Elements
+        const videoFormatGrid = document.getElementById('videoFormatGrid');
+        const videoResRow = document.getElementById('videoResRow');
+        const videoActionTargetText = document.getElementById('videoActionTargetText');
+        const videoActionSpecsText = document.getElementById('videoActionSpecsText');
+        const btnDownloadVideo = document.getElementById('btnDownloadVideo');
+
+        // Playlist Elements
         const playlistTracksSection = document.getElementById('playlistTracksSection');
         const tracklistCount = document.getElementById('tracklistCount');
         const tracklistBody = document.getElementById('tracklistBody');
+
+        // Progress Elements
         const progressCard = document.getElementById('progressCard');
         const progressStatusText = document.getElementById('progressStatusText');
         const progressPercent = document.getElementById('progressPercent');
@@ -1027,44 +1030,26 @@
 
             if (data.is_playlist) {
                 mediaDurationBadge.textContent = `${data.track_count} tracks`;
-                playlistBanner.style.display = 'block';
-                playlistTrackCountBadge.textContent = `${data.track_count} Tracks`;
                 playlistTracksSection.style.display = 'block';
                 tracklistCount.textContent = `${data.track_count} Tracks`;
                 renderTracklist(data.entries);
-                activatePlaylistMode();
             } else {
                 mediaDurationBadge.textContent = data.duration_str || '';
-                playlistBanner.style.display = 'none';
                 playlistTracksSection.style.display = 'none';
-                activateSingleMode();
             }
 
             renderAudioFormats(data.audio_formats || []);
             renderVideoFormats(data.video_formats || []);
+            renderVideoResolutions(data.video_resolutions || []);
             updateActionSummary();
-        }
-
-        function activatePlaylistMode() {
-            isDownloadingPlaylist = true;
-            document.getElementById('btnWholePlaylistMode').className = 'btn-action';
-            document.getElementById('btnSingleSongMode').className = 'btn-clear';
-            btnDownloadAudio.className = 'btn-download-main btn-playlist';
-            updateActionSummary();
-        }
-
-        function activateSingleMode() {
-            isDownloadingPlaylist = false;
-            document.getElementById('btnWholePlaylistMode').className = 'btn-clear';
-            document.getElementById('btnSingleSongMode').className = 'btn-action';
-            btnDownloadAudio.className = 'btn-download-main';
-            updateActionSummary();
+            updateTracklistButtons();
         }
 
         function renderTracklist(entries) {
             tracklistBody.innerHTML = '';
             if (!entries || !entries.length) return;
 
+            const btnLabel = currentTab === 'video' ? '⬇ Video' : '⬇ Audio';
             entries.forEach(track => {
                 const item = document.createElement('div');
                 item.className = 'track-item';
@@ -1075,19 +1060,27 @@
                         <div class="track-sub">${track.uploader || ''} ${track.duration_str ? '• ' + track.duration_str : ''}</div>
                     </div>
                     <button type="button" class="btn-track-dl" onclick="downloadSingleTrack('${track.url || ''}', '${track.title.replace(/'/g, "\\'")}')">
-                        Download Song
+                        ${btnLabel}
                     </button>
                 `;
                 tracklistBody.appendChild(item);
             });
         }
 
+        function updateTracklistButtons() {
+            const btnLabel = currentTab === 'video' ? '⬇ Video' : '⬇ Audio';
+            document.querySelectorAll('.btn-track-dl').forEach(btn => {
+                btn.textContent = btnLabel;
+            });
+        }
+
+        // --- Audio Controls ---
         function renderAudioFormats(formats) {
             formatGrid.innerHTML = '';
             formats.forEach(f => {
                 const card = document.createElement('div');
                 card.className = `format-card ${f.codec === selectedFormat ? 'selected' : ''}`;
-                card.onclick = () => selectAudioFormat(f.codec);
+                card.onclick = (e) => selectAudioFormat(f.codec, e.currentTarget);
                 card.innerHTML = `
                     <div class="format-name">${f.label}</div>
                     <div class="format-sub">${f.badge}</div>
@@ -1097,10 +1090,10 @@
             renderBitrates();
         }
 
-        function selectAudioFormat(codec) {
+        function selectAudioFormat(codec, el) {
             selectedFormat = codec;
-            document.querySelectorAll('.format-card').forEach(c => c.classList.remove('selected'));
-            event.currentTarget.classList.add('selected');
+            formatGrid.querySelectorAll('.format-card').forEach(c => c.classList.remove('selected'));
+            if (el) el.classList.add('selected');
             renderBitrates();
             updateActionSummary();
         }
@@ -1119,43 +1112,78 @@
                 pill.type = 'button';
                 pill.className = `bitrate-pill ${b === selectedBitrate ? 'selected' : ''}`;
                 pill.textContent = b === 'Lossless' ? '✨ Lossless Studio Quality' : `${b} kbps`;
-                pill.onclick = () => selectBitrate(b);
+                pill.onclick = (e) => selectBitrate(b, e.currentTarget);
                 bitrateRow.appendChild(pill);
             });
         }
 
-        function selectBitrate(b) {
+        function selectBitrate(b, el) {
             selectedBitrate = b;
-            document.querySelectorAll('.bitrate-pill').forEach(p => p.classList.remove('selected'));
-            event.currentTarget.classList.add('selected');
+            bitrateRow.querySelectorAll('.bitrate-pill').forEach(p => p.classList.remove('selected'));
+            if (el) el.classList.add('selected');
             updateActionSummary();
         }
 
+        // --- Video Controls ---
         function renderVideoFormats(formats) {
-            videoFormatList.innerHTML = '';
-            if (!formats || !formats.length) {
-                videoFormatList.innerHTML = '<div style="color: var(--text-dim); padding: 10px;">No video streams found for this content.</div>';
-                return;
-            }
+            videoFormatGrid.innerHTML = '';
+            const containerList = (formats && formats.length) ? formats : [
+                { codec: 'mp4', label: 'MP4', badge: 'Universal' },
+                { codec: 'mkv', label: 'MKV', badge: 'Matroska' },
+                { codec: 'webm', label: 'WEBM', badge: 'Modern Web' },
+                { codec: '3gp', label: '3GP', badge: 'Compact' }
+            ];
 
-            formats.forEach(f => {
-                const item = document.createElement('div');
-                item.className = 'video-format-item';
-                item.innerHTML = `
-                    <div style="font-weight: 600; font-size: 0.95rem;">${f.label}</div>
-                    <button type="button" class="btn-video-dl" onclick="triggerVideoDownload('${f.id}')">
-                        Download Video
-                    </button>
+            containerList.forEach(f => {
+                const card = document.createElement('div');
+                card.className = `format-card ${f.codec === selectedVideoFormat ? 'selected' : ''}`;
+                card.onclick = (e) => selectVideoFormat(f.codec, e.currentTarget);
+                card.innerHTML = `
+                    <div class="format-name">${f.label}</div>
+                    <div class="format-sub">${f.badge}</div>
                 `;
-                videoFormatList.appendChild(item);
+                videoFormatGrid.appendChild(card);
             });
         }
 
+        function selectVideoFormat(codec, el) {
+            selectedVideoFormat = codec;
+            videoFormatGrid.querySelectorAll('.format-card').forEach(c => c.classList.remove('selected'));
+            if (el) el.classList.add('selected');
+            updateActionSummary();
+        }
+
+        function renderVideoResolutions(resList) {
+            videoResRow.innerHTML = '';
+            const resolutions = (resList && resList.length) ? resList : ['1080p', '720p', '480p', '360p'];
+
+            if (!resolutions.includes(selectedVideoRes)) {
+                selectedVideoRes = resolutions[0] || '1080p';
+            }
+
+            resolutions.forEach(r => {
+                const pill = document.createElement('button');
+                pill.type = 'button';
+                pill.className = `bitrate-pill ${r === selectedVideoRes ? 'selected' : ''}`;
+                pill.textContent = r;
+                pill.onclick = (e) => selectVideoResolution(r, e.currentTarget);
+                videoResRow.appendChild(pill);
+            });
+        }
+
+        function selectVideoResolution(res, el) {
+            selectedVideoRes = res;
+            videoResRow.querySelectorAll('.bitrate-pill').forEach(p => p.classList.remove('selected'));
+            if (el) el.classList.add('selected');
+            updateActionSummary();
+        }
+
+        // --- Tab Switching ---
         function switchTab(tab) {
             currentTab = tab;
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active', 'music-tab'));
             if (tab === 'audio') {
-                document.getElementById('tabBtnAudio').classList.add('active');
+                document.getElementById('tabBtnAudio').classList.add('active', 'music-tab');
                 document.getElementById('audioTabContent').style.display = 'block';
                 document.getElementById('videoTabContent').style.display = 'none';
             } else {
@@ -1163,13 +1191,18 @@
                 document.getElementById('audioTabContent').style.display = 'none';
                 document.getElementById('videoTabContent').style.display = 'block';
             }
+            updateActionSummary();
+            updateTracklistButtons();
         }
 
         function updateActionSummary() {
+            const isPlaylist = mediaData?.is_playlist;
+            
+            // Audio Tab Summary
             const formatUpper = selectedFormat.toUpperCase();
             const bitrateStr = selectedBitrate === 'Lossless' ? 'Lossless' : `${selectedBitrate} kbps`;
 
-            if (isDownloadingPlaylist) {
+            if (isPlaylist) {
                 actionTargetText.textContent = `Download Entire Playlist (${mediaData?.track_count || 0} Tracks)`;
                 actionSpecsText.textContent = `All songs packaged into ZIP • ${formatUpper} @ ${bitrateStr}`;
                 btnDownloadAudio.innerHTML = `<span>📦 Download Full Playlist (ZIP)</span>`;
@@ -1178,41 +1211,65 @@
                 actionSpecsText.textContent = `${formatUpper} • ${bitrateStr} • High Quality Audio`;
                 btnDownloadAudio.innerHTML = `<span>⬇ Download Audio Track</span>`;
             }
+
+            // Video Tab Summary
+            const videoFormatUpper = selectedVideoFormat.toUpperCase();
+            const videoResStr = selectedVideoRes;
+
+            if (isPlaylist) {
+                videoActionTargetText.textContent = `Download Entire Playlist (${mediaData?.track_count || 0} Videos)`;
+                videoActionSpecsText.textContent = `All videos packaged into ZIP • ${videoFormatUpper} @ ${videoResStr}`;
+                btnDownloadVideo.innerHTML = `<span>📦 Download Full Playlist (ZIP)</span>`;
+            } else {
+                videoActionTargetText.textContent = `Download: ${mediaData?.title || 'Selected Video'}`;
+                videoActionSpecsText.textContent = `${videoFormatUpper} • ${videoResStr} • High Definition Video`;
+                btnDownloadVideo.innerHTML = `<span>⬇ Download Video</span>`;
+            }
         }
 
         function downloadSingleTrack(trackUrl, title) {
             if (!trackUrl) return;
-            isDownloadingPlaylist = false;
-            updateActionSummary();
-            startDownloadProcess({
-                url: trackUrl,
-                type: 'audio',
-                codec: selectedFormat,
-                bitrate: selectedBitrate,
-                is_playlist: false,
-                title: title
-            });
+            if (currentTab === 'video') {
+                startDownloadProcess({
+                    url: trackUrl,
+                    type: 'video',
+                    codec: selectedVideoFormat,
+                    resolution: selectedVideoRes,
+                    is_playlist: false,
+                    title: title
+                });
+            } else {
+                startDownloadProcess({
+                    url: trackUrl,
+                    type: 'audio',
+                    codec: selectedFormat,
+                    bitrate: selectedBitrate,
+                    is_playlist: false,
+                    title: title
+                });
+            }
         }
 
         function triggerDownload(type) {
-            startDownloadProcess({
-                url: targetDownloadUrl,
-                type: type,
-                codec: selectedFormat,
-                bitrate: selectedBitrate,
-                is_playlist: isDownloadingPlaylist,
-                title: mediaData?.title || 'Media'
-            });
-        }
-
-        function triggerVideoDownload(resolution) {
-            startDownloadProcess({
-                url: targetDownloadUrl,
-                type: 'video',
-                resolution: resolution,
-                is_playlist: isDownloadingPlaylist,
-                title: mediaData?.title || 'Video'
-            });
+            if (type === 'video') {
+                startDownloadProcess({
+                    url: targetDownloadUrl,
+                    type: 'video',
+                    codec: selectedVideoFormat,
+                    resolution: selectedVideoRes,
+                    is_playlist: mediaData?.is_playlist || false,
+                    title: mediaData?.title || 'Video'
+                });
+            } else {
+                startDownloadProcess({
+                    url: targetDownloadUrl,
+                    type: 'audio',
+                    codec: selectedFormat,
+                    bitrate: selectedBitrate,
+                    is_playlist: mediaData?.is_playlist || false,
+                    title: mediaData?.title || 'Audio'
+                });
+            }
         }
 
         async function startDownloadProcess(params) {
@@ -1226,9 +1283,12 @@
             progressSuccessAction.style.display = 'none';
 
             const totalExpected = params.total_items || (params.is_playlist ? (mediaData?.track_count || 1) : 1);
+            const isVideo = params.type === 'video';
+            const itemIcon = isVideo ? '🎬' : '🎵';
+
             if (params.is_playlist || totalExpected > 1) {
                 progressCounterBadge.style.display = 'inline-flex';
-                completedCounterText.textContent = `🎵 0 of ${totalExpected} Completed`;
+                completedCounterText.textContent = `${itemIcon} 0 of ${totalExpected} Completed`;
             } else {
                 progressCounterBadge.style.display = 'none';
             }
@@ -1262,6 +1322,10 @@
         function pollTaskStatus(taskId, params, fallbackTotal = 1) {
             if (pollingInterval) clearInterval(pollingInterval);
 
+            const isVideo = params.type === 'video';
+            const itemIcon = isVideo ? '🎬' : '🎵';
+            const itemTypeStr = isVideo ? 'Video' : 'Song';
+
             pollingInterval = setInterval(async () => {
                 try {
                     const res = await fetch(`/task_status/${taskId}`);
@@ -1275,7 +1339,7 @@
 
                     if (isPlaylist) {
                         progressCounterBadge.style.display = 'inline-flex';
-                        completedCounterText.textContent = `🎵 ${completed} of ${total} Completed`;
+                        completedCounterText.textContent = `${itemIcon} ${completed} of ${total} Completed`;
                     } else {
                         progressCounterBadge.style.display = 'none';
                     }
@@ -1286,30 +1350,34 @@
                         progressPercent.textContent = pct + '%';
                         
                         if (isPlaylist) {
-                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Downloading Song ${current} of ${total} • <b>${completed}/${total} Completed</b></span>`;
-                            progressItemInfo.textContent = task.current_title ? `Song: "${task.current_title}" (${completed} of ${total} finished)` : `Processing tracks (${completed} of ${total} finished)...`;
+                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Downloading ${itemTypeStr} ${current} of ${total} • <b>${completed}/${total} Completed</b></span>`;
+                            progressItemInfo.textContent = task.current_title ? `${itemTypeStr}: "${task.current_title}" (${completed} of ${total} finished)` : `Processing items (${completed} of ${total} finished)...`;
                         } else {
-                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Downloading media stream...</span>`;
+                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Downloading ${isVideo ? 'video stream' : 'audio stream'}...</span>`;
                             progressItemInfo.textContent = task.current_title || params.title;
                         }
                         progressSpeed.textContent = task.speed || '';
                     } else if (task.status === 'converting') {
                         if (isPlaylist) {
-                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Transcoding Song ${current} of ${total} • <b>${completed}/${total} Completed</b></span>`;
-                            progressItemInfo.textContent = `Encoding into ${params.codec.toUpperCase()} (${params.bitrate} kbps) • ${completed} of ${total} finished`;
+                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Processing ${itemTypeStr} ${current} of ${total} • <b>${completed}/${total} Completed</b></span>`;
+                            progressItemInfo.textContent = isVideo
+                                ? `Transcoding into ${params.codec.toUpperCase()} (${params.resolution}) • ${completed} of ${total} finished`
+                                : `Encoding into ${params.codec.toUpperCase()} (${params.bitrate} kbps) • ${completed} of ${total} finished`;
                         } else {
                             progressBarFill.style.width = '96%';
                             progressPercent.textContent = '96%';
-                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Transcoding audio with FFmpeg...</span>`;
-                            progressItemInfo.textContent = `Encoding into ${params.codec.toUpperCase()} (${params.bitrate} kbps) with metadata tags`;
+                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Transcoding with FFmpeg...</span>`;
+                            progressItemInfo.textContent = isVideo
+                                ? `Transcoding into ${params.codec.toUpperCase()} (${params.resolution}) with metadata`
+                                : `Encoding into ${params.codec.toUpperCase()} (${params.bitrate} kbps) with metadata tags`;
                         }
                     } else if (task.status === 'zipping') {
                         progressBarFill.style.width = '98%';
                         progressPercent.textContent = '98%';
                         if (isPlaylist) {
                             completedCounterText.textContent = `📦 ${total} of ${total} Ready`;
-                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Packaging all ${total} songs into ZIP archive...</span>`;
-                            progressItemInfo.textContent = `All ${total} tracks converted! Generating final package...`;
+                            progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Packaging all ${total} ${itemTypeStr.toLowerCase()}s into ZIP archive...</span>`;
+                            progressItemInfo.textContent = `All ${total} items processed! Generating final package...`;
                         } else {
                             progressStatusText.innerHTML = `<span class="spinner" style="width: 14px; height: 14px; border-width: 2px;"></span> <span>Compressing into ZIP archive...</span>`;
                             progressItemInfo.textContent = 'Finalizing package...';
@@ -1320,8 +1388,8 @@
                         progressPercent.textContent = '100%';
                         if (isPlaylist) {
                             completedCounterText.textContent = `✅ ${total} of ${total} Completed`;
-                            progressStatusText.innerHTML = `<span style="color: var(--success);">🎉 All ${total} Songs Completed!</span>`;
-                            progressItemInfo.textContent = `Playlist archive ready: ${task.filename} (${total} songs included)`;
+                            progressStatusText.innerHTML = `<span style="color: var(--success);">🎉 All ${total} ${itemTypeStr}s Completed!</span>`;
+                            progressItemInfo.textContent = `Playlist archive ready: ${task.filename} (${total} items included)`;
                         } else {
                             progressStatusText.innerHTML = `<span style="color: var(--success);">🎉 Download Complete!</span>`;
                             progressItemInfo.textContent = `File ready: ${task.filename}`;

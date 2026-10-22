@@ -63,6 +63,34 @@ AUDIO_FORMATS_CONFIG = [
     }
 ]
 
+VIDEO_CONTAINERS_CONFIG = [
+    {
+        'codec': 'mp4',
+        'label': 'MP4',
+        'badge': 'Universal',
+        'desc': 'Maximum compatibility across all phones, computers, and TVs'
+    },
+    {
+        'codec': 'mkv',
+        'label': 'MKV',
+        'badge': 'Matroska',
+        'desc': 'Modern open container preserving high-definition streams and audio'
+    },
+    {
+        'codec': 'webm',
+        'label': 'WEBM',
+        'badge': 'Modern Web',
+        'desc': 'Web-optimized container format with high compression efficiency'
+    },
+    {
+        'codec': '3gp',
+        'label': '3GP',
+        'badge': 'Compact',
+        'desc': 'Ultra-compact video format suitable for storage saving'
+    }
+]
+
+
 def detect_platform(info, url=""):
     """Detect platform from extraction metadata or URL domain"""
     extractor = (info.get('extractor_key') or info.get('extractor') or '').lower()
@@ -148,12 +176,8 @@ def format_extraction_results(info, url=""):
             'preview_url': preview_url,
             'entries': entries,
             'audio_formats': AUDIO_FORMATS_CONFIG,
-            'video_formats': [
-                {'id': '1080p', 'label': '1080p | Full HD (MP4)'},
-                {'id': '720p', 'label': '720p | HD (MP4)'},
-                {'id': '480p', 'label': '480p | Standard (MP4)'},
-                {'id': '360p', 'label': '360p | Light (MP4)'}
-            ]
+            'video_formats': VIDEO_CONTAINERS_CONFIG,
+            'video_resolutions': ['1080p', '720p', '480p', '360p']
         }
         
     # Single item
@@ -176,14 +200,7 @@ def format_extraction_results(info, url=""):
                 }
                 
     sorted_res = sorted(video_resolutions.values(), key=lambda x: x['height'], reverse=True)
-    video_formats = []
-    for item in sorted_res:
-        size_str = f" • {round(item['size'] / (1024*1024), 1)} MB" if item['size'] else ""
-        video_formats.append({
-            'id': item['resolution'],
-            'label': f"{item['resolution']} | MP4{size_str}",
-            'height': item['height']
-        })
+    res_list = [item['resolution'] for item in sorted_res] or ['1080p', '720p', '480p', '360p']
         
     return {
         'success': True,
@@ -194,6 +211,7 @@ def format_extraction_results(info, url=""):
         'duration_str': format_duration(info.get('duration')),
         'preview_url': preview_url,
         'audio_formats': AUDIO_FORMATS_CONFIG,
-        'video_formats': video_formats
+        'video_formats': VIDEO_CONTAINERS_CONFIG,
+        'video_resolutions': res_list
     }
 

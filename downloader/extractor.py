@@ -109,9 +109,10 @@ def _run_single_download(task_id, url, download_type, codec, bitrate, resolution
         except Exception:
             fmt_str = 'bestvideo+bestaudio/best'
 
+        chosen_container = (codec or 'mp4').lower()
         ydl_opts.update({
             'format': fmt_str,
-            'merge_output_format': 'mp4',
+            'merge_output_format': chosen_container,
             'postprocessors': [{
                 'key': 'FFmpegMetadata',
                 'add_metadata': True,
@@ -221,9 +222,10 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
         except Exception:
             fmt_str = 'bestvideo+bestaudio/best'
 
+        chosen_container = (codec or 'mp4').lower()
         ydl_opts.update({
             'format': fmt_str,
-            'merge_output_format': 'mp4',
+            'merge_output_format': chosen_container,
             'postprocessors': [{
                 'key': 'FFmpegMetadata',
                 'add_metadata': True,
