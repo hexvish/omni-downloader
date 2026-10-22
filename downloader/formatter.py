@@ -63,12 +63,45 @@ AUDIO_FORMATS_CONFIG = [
     }
 ]
 
-def format_extraction_results(info):
+def detect_platform(info, url=""):
+    """Detect platform from extraction metadata or URL domain"""
+    extractor = (info.get('extractor_key') or info.get('extractor') or '').lower()
+    url_lower = (url or '').lower()
+    is_playlist = info.get('_type') == 'playlist' or ('entries' in info and len(info.get('entries', [])) > 1)
+    
+    if 'music.youtube' in url_lower:
+        if is_playlist:
+            return {'name': 'YouTube Music Playlist', 'icon': '🎵', 'color': '#ec4899'}
+        return {'name': 'YouTube Music', 'icon': '🎵', 'color': '#ec4899'}
+    elif 'youtube' in extractor or 'youtube' in url_lower or 'youtu.be' in url_lower:
+        if is_playlist:
+            return {'name': 'YouTube Playlist', 'icon': '📦', 'color': '#a855f7'}
+        return {'name': 'YouTube', 'icon': '▶️', 'color': '#ef4444'}
+    elif 'instagram' in extractor or 'instagram' in url_lower:
+        return {'name': 'Instagram', 'icon': '📸', 'color': '#e1306c'}
+    elif 'tiktok' in extractor or 'tiktok' in url_lower:
+        return {'name': 'TikTok', 'icon': '🎵', 'color': '#06b6d4'}
+    elif 'twitter' in extractor or 'x.com' in url_lower or 'twitter.com' in url_lower:
+        return {'name': 'X / Twitter', 'icon': '🐦', 'color': '#38bdf8'}
+    elif 'facebook' in extractor or 'fb.watch' in url_lower or 'facebook.com' in url_lower:
+        return {'name': 'Facebook', 'icon': '📘', 'color': '#3b82f6'}
+    elif 'pinterest' in extractor or 'pinterest' in url_lower:
+        return {'name': 'Pinterest', 'icon': '📌', 'color': '#e11d48'}
+    elif 'soundcloud' in extractor or 'soundcloud' in url_lower:
+        return {'name': 'SoundCloud', 'icon': '☁️', 'color': '#f97316'}
+    elif 'reddit' in extractor or 'reddit' in url_lower:
+        return {'name': 'Reddit', 'icon': '🤖', 'color': '#ea580c'}
+    else:
+        name = info.get('extractor_key') or 'Universal Source'
+        return {'name': name, 'icon': '🌐', 'color': '#818cf8'}
+
+def format_extraction_results(info, url=""):
     """
     Filter and format yt-dlp extraction results into a unified structure
     supporting audio formats, bitrates, video resolutions, and playlists.
     """
     is_playlist = info.get('_type') == 'playlist' or ('entries' in info and len(info.get('entries', [])) > 1)
+    platform_info = detect_platform(info, url)
     
     preview_url = info.get('thumbnail')
     if not preview_url and info.get('thumbnails'):
@@ -108,6 +141,7 @@ def format_extraction_results(info):
         return {
             'success': True,
             'is_playlist': True,
+            'platform': platform_info,
             'title': title,
             'uploader': uploader,
             'track_count': len(entries),
@@ -154,6 +188,7 @@ def format_extraction_results(info):
     return {
         'success': True,
         'is_playlist': False,
+        'platform': platform_info,
         'title': title,
         'uploader': uploader,
         'duration_str': format_duration(info.get('duration')),

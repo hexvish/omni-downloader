@@ -38,7 +38,7 @@ def fetch_formats():
     try:
         force_playlist = True if mode == 'playlist' else (False if mode == 'single' else None)
         raw_info = extract_media_info(url, is_playlist=force_playlist)
-        formatted_data = format_extraction_results(raw_info)
+        formatted_data = format_extraction_results(raw_info, url=url)
         return jsonify(formatted_data)
     except Exception as e:
         print(f">>> Fetch error: {e}")

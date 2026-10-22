@@ -102,44 +102,7 @@
             margin-bottom: 1.75rem;
         }
 
-        /* Mode Selector */
-        .mode-selector {
-            display: flex;
-            background: var(--bg-inner);
-            padding: 4px;
-            border-radius: 12px;
-            border: 1px solid var(--glass-border);
-            margin-bottom: 1.25rem;
-            gap: 4px;
-        }
 
-        .mode-btn {
-            flex: 1;
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: none;
-            background: transparent;
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-        .mode-btn:hover {
-            color: var(--text-main);
-        }
-
-        .mode-btn.active {
-            background: rgba(99, 102, 241, 0.25);
-            color: #ffffff;
-            border: 1px solid rgba(99, 102, 241, 0.4);
-            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
-        }
 
         /* Input Bar */
         .input-group {
@@ -779,29 +742,7 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Platforms Footer */
-        .platforms {
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin-top: 1.5rem;
-        }
 
-        .platform-pill {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--glass-border);
-            padding: 4px 12px;
-            border-radius: 999px;
-            font-size: 0.78rem;
-            color: var(--text-dim);
-            font-weight: 500;
-        }
-        .platform-pill.highlight {
-            color: #c7d2fe;
-            border-color: rgba(99, 102, 241, 0.3);
-            background: rgba(99, 102, 241, 0.08);
-        }
 
         @media (max-width: 640px) {
             h1 { font-size: 2rem; }
@@ -819,33 +760,18 @@
         <!-- Header -->
         <div class="header">
             <div class="badge-tag">
-                <span>⚡ Universal Downloader</span>
-                <span>•</span>
-                <span>YouTube Music & Playlists</span>
+                <span>⚡ Universal Media Downloader</span>
             </div>
             <h1>Omni Downloader</h1>
-            <p class="subtitle">Extract YouTube Music & Videos in high fidelity MP3, AAC, M4A, FLAC, or download whole playlists at once.</p>
+            <p class="subtitle">Download videos, audio, and media from any supported platform in original high quality.</p>
         </div>
 
         <!-- Main Card -->
         <div class="card">
-            <!-- Mode Switcher -->
-            <div class="mode-selector">
-                <button type="button" class="mode-btn active" id="modeAuto" onclick="setMode('auto')">
-                    <span>✨ Auto Detect</span>
-                </button>
-                <button type="button" class="mode-btn" id="modeSingle" onclick="setMode('single')">
-                    <span>🎵 Single Song / Video</span>
-                </button>
-                <button type="button" class="mode-btn" id="modePlaylist" onclick="setMode('playlist')">
-                    <span>📦 Whole Playlist</span>
-                </button>
-            </div>
-
             <!-- Input Bar -->
             <div class="input-group">
                 <div class="input-wrapper">
-                    <input type="text" id="urlInput" placeholder="Paste YouTube, YouTube Music, or Playlist link here..." autocomplete="off">
+                    <input type="text" id="urlInput" placeholder="Paste any media link here (YouTube, Instagram, TikTok, Facebook, etc.)..." autocomplete="off">
                 </div>
                 <button type="button" class="btn-clear" id="clearBtn" title="Clear">Clear</button>
                 <button type="button" class="btn-action" id="fetchBtn" onclick="handleFetch()">
@@ -971,17 +897,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Platforms -->
-        <div class="platforms">
-            <span class="platform-pill highlight">🎵 YouTube Music</span>
-            <span class="platform-pill highlight">📦 Full Playlists to ZIP</span>
-            <span class="platform-pill">YouTube Videos</span>
-            <span class="platform-pill">Instagram</span>
-            <span class="platform-pill">TikTok</span>
-            <span class="platform-pill">X / Twitter</span>
-            <span class="platform-pill">Facebook</span>
-        </div>
     </div>
 
     <script>
@@ -1031,14 +946,6 @@
         const progressSuccessAction = document.getElementById('progressSuccessAction');
         const btnSaveFile = document.getElementById('btnSaveFile');
 
-        function setMode(mode) {
-            currentMode = mode;
-            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-            if (mode === 'auto') document.getElementById('modeAuto').classList.add('active');
-            if (mode === 'single') document.getElementById('modeSingle').classList.add('active');
-            if (mode === 'playlist') document.getElementById('modePlaylist').classList.add('active');
-        }
-
         function clearUI() {
             urlInput.value = '';
             statusBox.style.display = 'none';
@@ -1067,7 +974,7 @@
         async function handleFetch() {
             const url = urlInput.value.trim();
             if (!url) {
-                return showStatus('Please enter a YouTube, YouTube Music, or Playlist URL.', 'error');
+                return showStatus('Please enter a media URL first.', 'error');
             }
 
             setFetchLoading(true);
@@ -1078,7 +985,7 @@
             try {
                 const formData = new FormData();
                 formData.append('url', url);
-                formData.append('mode', currentMode);
+                formData.append('mode', 'auto');
 
                 const response = await fetch('/fetch_formats', { method: 'POST', body: formData });
                 const data = await response.json();
@@ -1104,20 +1011,29 @@
             mediaUploader.textContent = data.uploader || 'Creator';
             mediaThumb.src = data.preview_url || '';
 
-            if (data.is_playlist) {
-                mediaTypeBadge.textContent = '🎶 Playlist';
+            // Dynamic platform badge based on analyzed link
+            if (data.platform) {
+                mediaTypeBadge.textContent = `${data.platform.icon} ${data.platform.name}`;
+                mediaTypeBadge.style.background = `${data.platform.color}25`;
+                mediaTypeBadge.style.border = `1px solid ${data.platform.color}55`;
+                mediaTypeBadge.style.color = '#ffffff';
+            } else if (data.is_playlist) {
+                mediaTypeBadge.textContent = '📦 Playlist';
                 mediaTypeBadge.className = 'mini-badge playlist-badge';
+            } else {
+                mediaTypeBadge.textContent = '🎬 Media';
+                mediaTypeBadge.className = 'mini-badge';
+            }
+
+            if (data.is_playlist) {
                 mediaDurationBadge.textContent = `${data.track_count} tracks`;
                 playlistBanner.style.display = 'block';
                 playlistTrackCountBadge.textContent = `${data.track_count} Tracks`;
                 playlistTracksSection.style.display = 'block';
                 tracklistCount.textContent = `${data.track_count} Tracks`;
                 renderTracklist(data.entries);
-                // Default to Whole Playlist mode if playlist was fetched
                 activatePlaylistMode();
             } else {
-                mediaTypeBadge.textContent = '🎵 Single Track';
-                mediaTypeBadge.className = 'mini-badge';
                 mediaDurationBadge.textContent = data.duration_str || '';
                 playlistBanner.style.display = 'none';
                 playlistTracksSection.style.display = 'none';
