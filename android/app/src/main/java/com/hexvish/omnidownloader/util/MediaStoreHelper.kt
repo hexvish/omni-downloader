@@ -1,5 +1,6 @@
 package com.hexvish.omnidownloader.util
 
+import android.app.DownloadManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -8,10 +9,10 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.webkit.MimeTypeMap
+import android.widget.Toast
 import androidx.core.content.FileProvider
 import java.io.File
 import java.io.FileInputStream
-import java.io.FileOutputStream
 
 object MediaStoreHelper {
 
@@ -26,13 +27,12 @@ object MediaStoreHelper {
             "mp4" -> "video/mp4"
             "mkv" -> "video/x-matroska"
             "webm" -> "video/webm"
-            "zip" -> "application/zip"
             else -> MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "*/*"
         }
     }
 
     /**
-     * Saves downloaded file to Android public MediaStore (Music, Movies, or Downloads)
+     * Saves downloaded file to Android public MediaStore (Music or Movies)
      * so it appears instantly in Samsung Music, YouTube Music, Google Files, and Gallery.
      */
     fun saveToPublicStorage(context: Context, sourceFile: File): Uri? {
@@ -41,24 +41,17 @@ object MediaStoreHelper {
         val filename = sourceFile.name
         val mimeType = getMimeType(sourceFile)
         val isAudio = mimeType.startsWith("audio")
-        val isVideo = mimeType.startsWith("video")
 
-        val collectionUri: Uri = when {
-            isAudio -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-            isVideo -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-            else -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    MediaStore.Downloads.EXTERNAL_CONTENT_URI
-                } else {
-                    MediaStore.Files.getContentUri("external")
-                }
-            }
+        val collectionUri: Uri = if (isAudio) {
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        } else {
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
         }
 
-        val relativePath = when {
-            isAudio -> "${Environment.DIRECTORY_MUSIC}/Omni Downloader"
-            isVideo -> "${Environment.DIRECTORY_MOVIES}/Omni Downloader"
-            else -> "${Environment.DIRECTORY_DOWNLOADS}/Omni Downloader"
+        val relativePath = if (isAudio) {
+            "${Environment.DIRECTORY_MUSIC}/Omni Downloader"
+        } else {
+            "${Environment.DIRECTORY_MOVIES}/Omni Downloader"
         }
 
         val contentValues = ContentValues().apply {
@@ -93,23 +86,6 @@ object MediaStoreHelper {
     }
 
     /**
-     * Saves a source file into a user-selected destination URI (via SAF CreateDocument picker).
-     */
-    fun copyToUri(context: Context, sourceFile: File, destinationUri: Uri): Boolean {
-        return try {
-            context.contentResolver.openOutputStream(destinationUri)?.use { outStream ->
-                FileInputStream(sourceFile).use { inStream ->
-                    inStream.copyTo(outStream)
-                }
-            }
-            true
-        } catch (e: Exception) {
-            e.printStackTrace()
-            false
-        }
-    }
-
-    /**
      * Launches the default system audio/video player to play the downloaded file immediately.
      */
     fun openFile(context: Context, uri: Uri, mimeType: String) {
@@ -119,11 +95,39 @@ object MediaStoreHelper {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         try {
-            context.startActivity(Intent.createChooser(intent, "Open with").apply {
+            context.startActivity(Intent.createChooser(intent, "Play with").apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             })
         } catch (e: Exception) {
-            e.printStackTrace()
+            Toast.makeText(context, "No media player found to play this file.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Opens the Music/Omni Downloader or Movies/Omni Downloader folder in the file manager.
+     */
+    fun openFolder(context: Context, isAudio: Boolean) {
+        val subDir = if (isAudio) "Music/Omni Downloader" else "Movies/Omni Downloader"
+
+        // Attempt 1: Open directory via DocumentsUI
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            val uri = Uri.parse("content://com.android.externalstorage.documents/document/primary:${Uri.encode(subDir)}")
+            setDataAndType(uri, "vnd.android.document/directory")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        try {
+            context.startActivity(intent)
+        } catch (e1: Exception) {
+            // Attempt 2: Open system Downloads or Files view
+            try {
+                val fallback = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(fallback)
+            } catch (e2: Exception) {
+                Toast.makeText(context, "Saved to Internal Storage > $subDir", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -142,7 +146,7 @@ object MediaStoreHelper {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             })
         } catch (e: Exception) {
-            e.printStackTrace()
+            Toast.makeText(context, "Unable to share file.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -157,4 +161,3 @@ object MediaStoreHelper {
         }
     }
 }
-

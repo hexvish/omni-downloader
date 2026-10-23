@@ -151,6 +151,14 @@ object OmniDownloadController {
             intArrayOf()
         }
 
+        // If user selected exactly 1 track from playlist, treat as single track download
+        val effectiveUrl = if (isPlaylist && selectedIndices.size == 1) {
+            meta?.tracks?.find { it.index == selectedIndices[0] }?.url ?: url
+        } else {
+            url
+        }
+        val effectiveIsPlaylist = isPlaylist && selectedIndices.size > 1
+
         _downloadState.value = DownloadState.DOWNLOADING
         _progress.value = DownloadProgress(0f, "", "Starting download...")
         _errorMessage.value = null
@@ -159,14 +167,43 @@ object OmniDownloadController {
 
         val intent = Intent(context, DownloadService::class.java).apply {
             action = DownloadService.ACTION_START_DOWNLOAD
-            putExtra(DownloadService.EXTRA_URL, url)
+            putExtra(DownloadService.EXTRA_URL, effectiveUrl)
             putExtra(DownloadService.EXTRA_TYPE, downloadType)
             putExtra(DownloadService.EXTRA_CODEC, codec)
             putExtra(DownloadService.EXTRA_BITRATE, bitrate)
             putExtra(DownloadService.EXTRA_RESOLUTION, resolution)
-            putExtra(DownloadService.EXTRA_IS_PLAYLIST, isPlaylist)
+            putExtra(DownloadService.EXTRA_IS_PLAYLIST, effectiveIsPlaylist)
             putExtra(DownloadService.EXTRA_TITLE, meta?.title ?: "Download")
             putExtra(DownloadService.EXTRA_SELECTED_INDICES, selectedIndices)
+        }
+
+        context.startForegroundService(intent)
+    }
+
+    fun startSingleTrackDownload(
+        context: Context,
+        track: TrackItem,
+        downloadType: String,
+        codec: String,
+        bitrate: String,
+        resolution: String
+    ) {
+        _downloadState.value = DownloadState.DOWNLOADING
+        _progress.value = DownloadProgress(0f, "", "Starting download for ${track.title}...")
+        _errorMessage.value = null
+        _completedFile.value = null
+        _publicUri.value = null
+
+        val intent = Intent(context, DownloadService::class.java).apply {
+            action = DownloadService.ACTION_START_DOWNLOAD
+            putExtra(DownloadService.EXTRA_URL, track.url)
+            putExtra(DownloadService.EXTRA_TYPE, downloadType)
+            putExtra(DownloadService.EXTRA_CODEC, codec)
+            putExtra(DownloadService.EXTRA_BITRATE, bitrate)
+            putExtra(DownloadService.EXTRA_RESOLUTION, resolution)
+            putExtra(DownloadService.EXTRA_IS_PLAYLIST, false)
+            putExtra(DownloadService.EXTRA_TITLE, track.title)
+            putExtra(DownloadService.EXTRA_SELECTED_INDICES, intArrayOf())
         }
 
         context.startForegroundService(intent)

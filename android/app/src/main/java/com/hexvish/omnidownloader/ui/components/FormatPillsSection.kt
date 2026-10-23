@@ -37,6 +37,7 @@ fun FormatPillsSection(
     onResolutionChange: (String) -> Unit,
     onStartDownload: () -> Unit,
     isPlaylist: Boolean,
+    selectedCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val audioCodecs = listOf("MP3", "M4A", "FLAC", "WAV")
@@ -228,21 +229,40 @@ fun FormatPillsSection(
             }
         }
 
+        val isEnabled = if (isPlaylist) selectedCount > 0 else true
+        val buttonText = if (isPlaylist) {
+            when {
+                selectedCount == 1 -> "Download 1 Track"
+                selectedCount > 1 -> "Download Selected ($selectedCount Tracks)"
+                else -> "Select Tracks to Download"
+            }
+        } else {
+            "Download Media (${if (activeTab == MediaTab.AUDIO) selectedAudioCodec else selectedVideoCodec})"
+        }
+
         // Start Download Button
         Button(
             onClick = onStartDownload,
+            enabled = isEnabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp)
                 .clip(RoundedCornerShape(16.dp)),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.Transparent,
+                disabledContainerColor = Color(0x2038BDF8)
+            ),
             contentPadding = PaddingValues()
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
-                        Brush.horizontalGradient(listOf(CyanPrimary, VioletPrimary))
+                        if (isEnabled) {
+                            Brush.horizontalGradient(listOf(CyanPrimary, VioletPrimary))
+                        } else {
+                            SolidColor(Color(0x2038BDF8))
+                        }
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -253,14 +273,14 @@ fun FormatPillsSection(
                     Icon(
                         imageVector = Icons.Default.Download,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = if (isEnabled) Color.White else TextMuted,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
-                        text = if (isPlaylist) "Download Playlist (Zip)" else "Download Now",
+                        text = buttonText,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = if (isEnabled) Color.White else TextMuted
                     )
                 }
             }

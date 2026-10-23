@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.DriveFileMove
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
@@ -27,13 +27,15 @@ import java.io.File
 @Composable
 fun CompletedCard(
     file: File,
-    onSaveAs: () -> Unit,
-    onOpen: () -> Unit,
+    onPlay: () -> Unit,
+    onShowInFolder: () -> Unit,
     onShare: () -> Unit,
     onDownloadAnother: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val fileSizeMb = String.format("%.1f MB", file.length() / (1024.0 * 1024.0))
+    val isAudio = file.extension.lowercase() in listOf("mp3", "m4a", "flac", "wav", "opus")
+    val locationText = if (isAudio) "Saved to Music/Omni Downloader" else "Saved to Movies/Omni Downloader"
 
     Box(
         modifier = modifier
@@ -68,10 +70,10 @@ fun CompletedCard(
                         color = Color.White
                     )
                     Text(
-                        text = "Saved to Media Library & ready to use",
+                        text = locationText,
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Normal,
-                        color = TextSecondary
+                        fontWeight = FontWeight.Medium,
+                        color = CyanAccent
                     )
                 }
             }
@@ -103,7 +105,7 @@ fun CompletedCard(
                             text = "${file.extension.uppercase()} • $fileSizeMb",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
-                            color = CyanAccent
+                            color = TextSecondary
                         )
                     }
 
@@ -124,14 +126,14 @@ fun CompletedCard(
                 }
             }
 
-            // Primary 2 Action Buttons (Save As... & Open) matching Windows v1.0.2
+            // Primary 2 Action Buttons (Play Now & Show in Files)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Save As... button
+                // Play Now button
                 Button(
-                    onClick = onSaveAs,
+                    onClick = onPlay,
                     modifier = Modifier
                         .weight(1f)
                         .height(46.dp)
@@ -152,13 +154,13 @@ fun CompletedCard(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.DriveFileMove,
+                                imageVector = Icons.Default.PlayArrow,
                                 contentDescription = null,
                                 tint = Color.White,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                             Text(
-                                text = "Save As...",
+                                text = "Play Now",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -167,9 +169,9 @@ fun CompletedCard(
                     }
                 }
 
-                // Open button
+                // Show in Files button
                 Button(
-                    onClick = onOpen,
+                    onClick = onShowInFolder,
                     modifier = Modifier
                         .weight(1f)
                         .height(46.dp)
@@ -185,14 +187,14 @@ fun CompletedCard(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.PlayArrow,
+                            imageVector = Icons.Default.FolderOpen,
                             contentDescription = null,
                             tint = CyanAccent,
                             modifier = Modifier.size(18.dp)
                         )
                         Text(
-                            text = "Open",
-                            fontSize = 14.sp,
+                            text = "Show in Files",
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
                         )

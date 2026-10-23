@@ -146,6 +146,13 @@ class DownloadService : Service() {
                         notificationManager.notify(NOTIFICATION_ID, notif)
                     }
 
+                    fun onTrackFinished(filePath: String) {
+                        val f = File(filePath)
+                        if (f.exists()) {
+                            MediaStoreHelper.saveToPublicStorage(this@DownloadService, f)
+                        }
+                    }
+
                     fun onCompleted(filePath: String) {
                         // Handled upon return
                     }
@@ -160,7 +167,7 @@ class DownloadService : Service() {
                     val engine = py.getModule("omni_engine")
                     
                     val pySelectedIndices = if (selectedIndices.isNotEmpty()) {
-                        selectedIndices.toList()
+                        org.json.JSONArray(selectedIndices).toString()
                     } else {
                         null
                     }

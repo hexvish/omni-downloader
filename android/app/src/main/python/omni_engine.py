@@ -2,7 +2,6 @@ import os
 import sys
 import json
 import shutil
-import zipfile
 import yt_dlp
 
 def get_ffmpeg_path():
@@ -10,7 +9,6 @@ def get_ffmpeg_path():
     path = shutil.which('ffmpeg')
     if path:
         return path
-    # Check common Android native library paths if bundled
     possible_paths = [
         '/data/data/com.hexvish.omnidownloader/lib/libffmpeg.so',
         '/data/data/com.hexvish.omnidownloader/files/ffmpeg'
@@ -88,19 +86,25 @@ def extract_media_info(url):
             'message': str(e)
         })
 
-def run_download(url, download_type, codec, bitrate, resolution, is_playlist, output_dir, progress_listener, selected_indices=None):
+def run_download(url, download_type, codec, bitrate, resolution, is_playlist, output_dir, progress_listener, selected_indices_raw=None):
     """
-    Downloads media and triggers Kotlin progress listener with percent, speed, and status.
-    Handles single media and playlists (packaged into zip).
+    Downloads media directly as individual files (NO ZIPs).
     """
     os.makedirs(output_dir, exist_ok=True)
     ffmpeg_exe = get_ffmpeg_path()
 
-    def sanitize_title(title):
-        return "".join(c for c in title if c.isalnum() or c in (' ', '-', '_', '.', '(', ')')).strip()
+    # Safely parse selected indices from JSON string or list
+    selected_indices = None
+    if selected_indices_raw:
+        try:
+            if isinstance(selected_indices_raw, str):
+                selected_indices = json.loads(selected_indices_raw)
+            else:
+                selected_indices = list(selected_indices_raw)
+        except Exception:
+            selected_indices = None
 
     if is_playlist:
-        # Download playlist tracks and package into zip
         return _download_playlist(url, download_type, codec, bitrate, resolution, output_dir, progress_listener, ffmpeg_exe, selected_indices)
     else:
         return _download_single(url, download_type, codec, bitrate, resolution, output_dir, progress_listener, ffmpeg_exe)
@@ -116,10 +120,16 @@ def _download_single(url, download_type, codec, bitrate, resolution, output_dir,
             speed_str = f"{round(speed / (1024*1024), 1)} MB/s" if speed else ""
             pct = min(98.0, round((downloaded / total) * 100, 1)) if total > 0 else 50.0
             if progress_listener:
-                progress_listener.onProgress(float(pct), speed_str, "Downloading stream...")
+                try:
+                    progress_listener.onProgress(float(pct), speed_str, "Downloading stream...")
+                except Exception:
+                    pass
         elif d.get('status') == 'finished':
             if progress_listener:
-                progress_listener.onProgress(99.0, "", "Finalizing file...")
+                try:
+                    progress_listener.onProgress(99.0, "", "Finalizing file...")
+                except Exception:
+                    pass
 
     ydl_opts = {
         'outtmpl': outtmpl,
@@ -149,12 +159,10 @@ def _download_single(url, download_type, codec, bitrate, resolution, output_dir,
                 }]
             })
         else:
-            # Native fallback: download direct audio stream (m4a or best)
             ydl_opts.update({
                 'format': 'bestaudio[ext=m4a]/bestaudio/best'
             })
     else:
-        # Video download
         chosen_container = (codec or 'mp4').lower()
         if ffmpeg_exe:
             try:
@@ -171,7 +179,6 @@ def _download_single(url, download_type, codec, bitrate, resolution, output_dir,
                 }]
             })
         else:
-            # Without ffmpeg, select best direct mp4 stream (contains both video and audio)
             ydl_opts.update({
                 'format': 'best[ext=mp4]/best'
             })
@@ -184,7 +191,6 @@ def _download_single(url, download_type, codec, bitrate, resolution, output_dir,
                 base, _ = os.path.splitext(filename)
                 filename = f"{base}.{(codec or 'mp3').lower()}"
             elif not os.path.exists(filename):
-                # Search for matching file in output_dir
                 base, _ = os.path.splitext(filename)
                 for f in os.listdir(output_dir):
                     if f.startswith(os.path.basename(base)):
@@ -192,18 +198,21 @@ def _download_single(url, download_type, codec, bitrate, resolution, output_dir,
                         break
 
             if progress_listener:
-                progress_listener.onProgress(100.0, "", "Complete")
-                progress_listener.onCompleted(filename)
+                try:
+                    progress_listener.onProgress(100.0, "", "Complete")
+                    progress_listener.onCompleted(filename)
+                except Exception:
+                    pass
             return filename
     except Exception as e:
         if progress_listener:
-            progress_listener.onError(str(e))
+            try:
+                progress_listener.onError(str(e))
+            except Exception:
+                pass
         raise e
 
 def _download_playlist(url, download_type, codec, bitrate, resolution, output_dir, progress_listener, ffmpeg_exe, selected_indices=None):
-    temp_dir = os.path.join(output_dir, 'playlist_temp')
-    os.makedirs(temp_dir, exist_ok=True)
-
     ydl_opts_meta = {
         'quiet': True,
         'extract_flat': True,
@@ -213,7 +222,6 @@ def _download_playlist(url, download_type, codec, bitrate, resolution, output_di
     try:
         with yt_dlp.YoutubeDL(ydl_opts_meta) as ydl:
             raw = ydl.extract_info(url, download=False)
-            playlist_title = raw.get('title') or 'Playlist'
             entries = [e for e in raw.get('entries', []) if e]
 
         selected_set = set(int(x) for x in selected_indices) if selected_indices else None
@@ -232,35 +240,39 @@ def _download_playlist(url, download_type, codec, bitrate, resolution, output_di
             if not track_url:
                 continue
 
-            track_title = entry.get('title') or f"Track_{track_idx}"
+            track_title = entry.get('title') or f"Track {track_idx}"
             if progress_listener:
-                base_pct = (i / total_tracks) * 90.0
-                progress_listener.onProgress(float(base_pct), "", f"Downloading ({i+1}/{total_tracks}): {track_title[:28]}...")
+                pct = ((i) / total_tracks) * 100.0
+                try:
+                    progress_listener.onProgress(float(pct), "", f"Downloading ({i+1}/{total_tracks}): {track_title[:24]}")
+                except Exception:
+                    pass
 
-            out_file = _download_single(track_url, download_type, codec, bitrate, resolution, temp_dir, None, ffmpeg_exe)
+            # Download each track directly into output_dir
+            out_file = _download_single(track_url, download_type, codec, bitrate, resolution, output_dir, None, ffmpeg_exe)
             if out_file and os.path.exists(out_file):
                 downloaded_files.append(out_file)
+                if progress_listener:
+                    try:
+                        progress_listener.onTrackFinished(out_file)
+                    except Exception:
+                        pass
+
+        if not downloaded_files:
+            raise Exception("Failed to download any tracks from the selection.")
 
         if progress_listener:
-            progress_listener.onProgress(92.0, "", "Compressing playlist into ZIP...")
+            try:
+                progress_listener.onProgress(100.0, "", "All tracks saved to library!")
+                progress_listener.onCompleted(downloaded_files[0])
+            except Exception:
+                pass
 
-        clean_pl_title = "".join(c for c in playlist_title if c.isalnum() or c in (' ', '-', '_', '.', '(', ')')).strip()
-        zip_path = os.path.join(output_dir, f"{clean_pl_title}.zip")
-
-        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for f in downloaded_files:
-                zipf.write(f, os.path.basename(f))
-
-        # Cleanup temp directory
-        shutil.rmtree(temp_dir, ignore_errors=True)
-
-        if progress_listener:
-            progress_listener.onProgress(100.0, "", "Complete")
-            progress_listener.onCompleted(zip_path)
-
-        return zip_path
+        return downloaded_files[0]
     except Exception as e:
-        shutil.rmtree(temp_dir, ignore_errors=True)
         if progress_listener:
-            progress_listener.onError(str(e))
+            try:
+                progress_listener.onError(str(e))
+            except Exception:
+                pass
         raise e

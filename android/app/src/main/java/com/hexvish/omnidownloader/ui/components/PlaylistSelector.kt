@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -28,6 +29,7 @@ fun PlaylistSelector(
     tracks: List<TrackItem>,
     onToggleTrack: (Int) -> Unit,
     onToggleAll: (Boolean) -> Unit,
+    onDownloadTrack: (TrackItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val selectedCount = tracks.count { it.isSelected }
@@ -142,6 +144,18 @@ fun PlaylistSelector(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Normal,
                                 color = TextSecondary
+                            )
+                        }
+
+                        IconButton(
+                            onClick = { onDownloadTrack(track) },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Download,
+                                contentDescription = "Download this track",
+                                tint = CyanAccent,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }

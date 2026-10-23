@@ -87,6 +87,22 @@ class OmniViewModel : ViewModel() {
         )
     }
 
+    fun downloadSingleTrack(context: Context, track: com.hexvish.omnidownloader.ui.model.TrackItem) {
+        val type = if (_activeTab.value == MediaTab.AUDIO) "audio" else "video"
+        val codec = if (_activeTab.value == MediaTab.AUDIO) _selectedAudioCodec.value else _selectedVideoCodec.value
+        val bitrate = _selectedBitrate.value
+        val resolution = _selectedResolution.value
+
+        OmniDownloadController.startSingleTrackDownload(
+            context = context,
+            track = track,
+            downloadType = type,
+            codec = codec,
+            bitrate = bitrate,
+            resolution = resolution
+        )
+    }
+
     fun cancelDownload(context: Context) {
         OmniDownloadController.cancelDownload(context)
     }

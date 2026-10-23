@@ -5,7 +5,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -31,33 +30,19 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.hexvish.omnidownloader.ui.components.*
 import com.hexvish.omnidownloader.ui.model.DownloadState
+import com.hexvish.omnidownloader.ui.model.MediaTab
 import com.hexvish.omnidownloader.ui.theme.*
 import com.hexvish.omnidownloader.ui.viewmodel.OmniViewModel
 import com.hexvish.omnidownloader.util.MediaStoreHelper
-import java.io.File
 import java.util.regex.Pattern
 
 class MainActivity : ComponentActivity() {
 
     private val viewModel: OmniViewModel by viewModels()
-    private var pendingSaveAsFile: File? = null
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { /* Permission granted or denied */ }
-
-    private val createDocumentLauncher = registerForActivityResult(
-        ActivityResultContracts.CreateDocument("*/*")
-    ) { uri ->
-        if (uri != null && pendingSaveAsFile != null) {
-            val success = MediaStoreHelper.copyToUri(this, pendingSaveAsFile!!, uri)
-            if (success) {
-                Toast.makeText(this, "Saved successfully!", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "Failed to save file.", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,13 +59,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             OmniDownloaderTheme {
-                OmniMainScreen(
-                    viewModel = viewModel,
-                    onSaveAs = { file ->
-                        pendingSaveAsFile = file
-                        createDocumentLauncher.launch(file.name)
-                    }
-                )
+                OmniMainScreen(viewModel = viewModel)
             }
         }
     }
@@ -113,8 +92,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun OmniMainScreen(
-    viewModel: OmniViewModel,
-    onSaveAs: (File) -> Unit
+    viewModel: OmniViewModel
 ) {
     val context = LocalContext.current
     val url by viewModel.url.collectAsState()
@@ -195,12 +173,13 @@ fun OmniMainScreen(
                     PlaylistSelector(
                         tracks = meta.tracks,
                         onToggleTrack = { viewModel.toggleTrack(it) },
-                        onToggleAll = { viewModel.toggleAllTracks(it) }
+                        onToggleAll = { viewModel.toggleAllTracks(it) },
+                        onDownloadTrack = { viewModel.downloadSingleTrack(context, it) }
                     )
                 }
 
-                // Format & Bitrate Controls
-                if (downloadState == DownloadState.READY_TO_DOWNLOAD) {
+                // Format & Bitrate Controls (also visible on ERROR so user can change settings & retry)
+                if (downloadState == DownloadState.READY_TO_DOWNLOAD || downloadState == DownloadState.ERROR) {
                     FormatPillsSection(
                         activeTab = activeTab,
                         onTabChange = { viewModel.onTabChange(it) },
@@ -213,7 +192,8 @@ fun OmniMainScreen(
                         selectedResolution = resolution,
                         onResolutionChange = { viewModel.onResolutionChange(it) },
                         onStartDownload = { viewModel.startDownload(context) },
-                        isPlaylist = meta.isPlaylist
+                        isPlaylist = meta.isPlaylist,
+                        selectedCount = meta.tracks.count { it.isSelected }
                     )
                 }
             }
@@ -235,8 +215,8 @@ fun OmniMainScreen(
 
                 CompletedCard(
                     file = file,
-                    onSaveAs = { onSaveAs(file) },
-                    onOpen = { MediaStoreHelper.openFile(context, targetUri, mimeType) },
+                    onPlay = { MediaStoreHelper.openFile(context, targetUri, mimeType) },
+                    onShowInFolder = { MediaStoreHelper.openFolder(context, isAudio = activeTab == MediaTab.AUDIO) },
                     onShare = { MediaStoreHelper.shareFile(context, targetUri, mimeType, file.name) },
                     onDownloadAnother = { viewModel.reset() }
                 )
