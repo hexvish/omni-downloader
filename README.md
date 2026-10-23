@@ -44,7 +44,10 @@ A modern, high-performance web-based universal media downloader built with Pytho
 omni-downloader/
 ├── app.py                  # Flask server and API route handlers
 ├── desktop.py              # Native desktop window launcher (pywebview)
-├── build_standalone.py     # 1-click standalone .exe packager (PyInstaller)
+├── build_standalone.py     # Standalone distribution & installer builder
+├── installer.iss           # Inno Setup Windows installer compiler script
+├── version_info.txt        # Windows PE executable metadata & version info
+├── app.ico                 # Multi-resolution application icon
 ├── config.py               # Global settings & engine discovery
 ├── requirements.txt        # Python dependencies
 ├── run.bat                 # One-click Windows launcher & auto-updater
@@ -58,7 +61,8 @@ omni-downloader/
 │   └── validators.py       # URL validation & input sanitization
 ├── static/
 │   ├── css/style.css       # Dedicated glassmorphism design system
-│   └── js/app.js           # Client-side state, polling & cancel handlers
+│   ├── js/app.js           # Client-side state, polling & cancel handlers
+│   └── img/icon.png        # Official high-resolution logo artwork
 ├── templates/
 │   └── index.html          # Lightweight semantic HTML interface
 └── downloads/              # Temporary download staging area
@@ -81,7 +85,17 @@ Omni Downloader leverages `yt-dlp`, supporting hundreds of platforms including:
 
 ## ⚙️ Installation & Usage
 
-### 🚀 Quick Start (Windows - One Click)
+### 📦 Windows Installer (Recommended for End Users)
+Download the latest **`OmniDownloader-Setup-v1.0.0.exe`** from [**Releases**](https://github.com/hexvish/omni-downloader/releases):
+- **1-Click Setup**: Installs to your user profile without requiring administrator/UAC privileges.
+- **Self-Contained Engine**: Bundles `FFmpeg`, `yt-dlp`, and all required C++ runtimes out of the box—no manual environment setup required.
+- **Desktop & Start Menu Shortcuts**: Full Windows integration with custom application icon.
+- **Dual-Mode GUI**: Runs as a lightweight native desktop app powered by Edge WebView2 with automatic browser fallback.
+- **Auto-Updating Engine**: Automatically keeps `yt-dlp` updated on launch so downloads never break when platforms update.
+
+---
+
+### 🚀 Quick Start from Source (Windows - One Click)
 > [!IMPORTANT]
 > If you downloaded the repository as a ZIP from GitHub, right-click the zip and choose **Extract All...** first before running. Do not run directly from inside the zip archive preview.
 
@@ -91,6 +105,25 @@ It will automatically:
 2. Check and install all dependencies from `requirements.txt`.
 3. Auto-update `yt-dlp` and `imageio-ffmpeg` to their latest releases.
 4. Launch the local web server and automatically open **http://localhost:5000** in your default browser.
+
+---
+
+### 🔨 Building the Standalone App & Installer (.exe)
+
+To compile the standalone desktop distribution and Windows Installer wizard yourself:
+
+1. Ensure dependencies and [Inno Setup 6](https://jrsoftware.org/isdl.php) are installed:
+   ```powershell
+   winget install JRSoftware.InnoSetup
+   pip install -r requirements.txt pyinstaller pillow
+   ```
+2. Run the build automation script:
+   ```powershell
+   python build_standalone.py
+   ```
+3. The compiled outputs will be available in the `dist/` directory:
+   - `dist/OmniDownloader-Setup-v1.0.0.exe` (Windows Installer wizard)
+   - `dist/OmniDownloader-v1.0.0-Windows.zip` (Portable standalone folder)
 
 ---
 
@@ -122,7 +155,11 @@ pip install -r requirements.txt
 
 #### 4. Run the application
 ```bash
+# Web server mode:
 python app.py
+
+# Native desktop window mode:
+python desktop.py
 ```
 
 #### 5. Access the Web UI

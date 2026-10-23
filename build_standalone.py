@@ -6,9 +6,41 @@ import subprocess
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
+def find_inno_compiler():
+    """Finds Inno Setup command-line compiler (iscc.exe)."""
+    candidates = [
+        shutil.which('iscc'),
+        os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Programs', 'Inno Setup 6', 'ISCC.exe'),
+        os.path.join(os.environ.get('ProgramFiles', ''), 'Inno Setup 6', 'ISCC.exe'),
+        os.path.join(os.environ.get('ProgramFiles(x86)', ''), 'Inno Setup 6', 'ISCC.exe'),
+    ]
+    for c in candidates:
+        if c and os.path.isfile(c):
+            return c
+    return None
+
+def find_runtime_dlls():
+    """Finds required Visual C++ runtime DLLs for bundling."""
+    dlls = {}
+    
+    # 1. vcruntime140_1.dll (required by 64-bit Python 3.11)
+    py_vc1 = os.path.join(sys.base_prefix, 'vcruntime140_1.dll')
+    sys_vc1 = os.path.join(os.environ.get('WINDIR', 'C:\\Windows'), 'System32', 'vcruntime140_1.dll')
+    if os.path.isfile(py_vc1):
+        dlls['vcruntime140_1.dll'] = py_vc1
+    elif os.path.isfile(sys_vc1):
+        dlls['vcruntime140_1.dll'] = sys_vc1
+
+    # 2. msvcp140.dll
+    sys_msvcp = os.path.join(os.environ.get('WINDIR', 'C:\\Windows'), 'System32', 'msvcp140.dll')
+    if os.path.isfile(sys_msvcp):
+        dlls['msvcp140.dll'] = sys_msvcp
+
+    return dlls
+
 def build_app():
     print("=" * 60)
-    print("       Building Omni Downloader v1.0 Standalone App")
+    print("       Building Omni Downloader v1.0 Standalone & Installer")
     print("=" * 60)
 
     # 1. Ensure pyinstaller is available
@@ -31,7 +63,6 @@ def build_app():
         shutil.rmtree(output_app_dir, ignore_errors=True)
 
     # 3. Construct PyInstaller command
-    # Windows uses semicolon for add-data
     sep = ';' if os.name == 'nt' else ':'
     cmd = [
         pyinstaller_exe,
@@ -46,17 +77,35 @@ def build_app():
         '--distpath', dist_dir,
         '--workpath', build_dir,
         '--clean',
-        '-y',
-        os.path.join(PROJECT_ROOT, 'desktop.py')
+        '-y'
     ]
 
-    print(f"[*] Running PyInstaller compilation...")
+    # Add app icon
+    ico_path = os.path.join(PROJECT_ROOT, 'app.ico')
+    if os.path.exists(ico_path):
+        cmd.extend(['--icon', ico_path])
+        cmd.extend(['--add-data', f'app.ico{sep}.'])
+
+    # Add version info if present
+    ver_path = os.path.join(PROJECT_ROOT, 'version_info.txt')
+    if os.path.exists(ver_path):
+        cmd.extend(['--version-file', ver_path])
+
+    # Add runtime DLLs directly to PyInstaller binaries
+    runtime_dlls = find_runtime_dlls()
+    for name, path in runtime_dlls.items():
+        print(f"[*] Bundling C++ runtime dependency: {name} -> {path}")
+        cmd.extend(['--add-binary', f'{path}{sep}.'])
+
+    cmd.append(os.path.join(PROJECT_ROOT, 'desktop.py'))
+
+    print(f"\n[*] Running PyInstaller compilation...")
     res = subprocess.run(cmd, cwd=PROJECT_ROOT)
     if res.returncode != 0:
         print("[ERROR] PyInstaller compilation failed.")
         return False
 
-    # 4. Copy bin/ folder into the packaged output
+    # 4. Copy engine binaries into output distribution
     source_bin = os.path.join(PROJECT_ROOT, 'bin')
     target_bin = os.path.join(output_app_dir, 'bin')
     if os.path.exists(source_bin):
@@ -65,15 +114,25 @@ def build_app():
     else:
         os.makedirs(target_bin, exist_ok=True)
 
-    # Copy README.md and LICENSE
-    for f in ('README.md', 'LICENSE'):
+    # Copy runtime DLLs to output directory root and _internal to ensure OS loader finds them
+    internal_dir = os.path.join(output_app_dir, '_internal')
+    for name, path in runtime_dlls.items():
+        try:
+            shutil.copy2(path, os.path.join(output_app_dir, name))
+            if os.path.isdir(internal_dir):
+                shutil.copy2(path, os.path.join(internal_dir, name))
+        except Exception as e:
+            print(f"[!] Warning copying {name}: {e}")
+
+    # Copy README.md, LICENSE, and app.ico
+    for f in ('README.md', 'LICENSE', 'app.ico'):
         src = os.path.join(PROJECT_ROOT, f)
         if os.path.exists(src):
             shutil.copy2(src, output_app_dir)
 
     # 5. Create ready-to-distribute ZIP archive
     zip_output_path = os.path.join(dist_dir, 'OmniDownloader-v1.0.0-Windows.zip')
-    print(f"[*] Packaging into distribution ZIP: {zip_output_path}...")
+    print(f"[*] Packaging into portable ZIP: {zip_output_path}...")
     with zipfile.ZipFile(zip_output_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, _, files in os.walk(output_app_dir):
             for file in files:
@@ -81,7 +140,23 @@ def build_app():
                 arcname = os.path.relpath(file_path, dist_dir)
                 zipf.write(file_path, arcname)
 
-    # 6. Clean up intermediate build directory
+    # 6. Build Inno Setup Installer (.exe) if compiler is available
+    iscc = find_inno_compiler()
+    installer_path = None
+    if iscc and os.path.isfile(os.path.join(PROJECT_ROOT, 'installer.iss')):
+        print(f"\n[*] Found Inno Setup compiler: {iscc}")
+        print(f"[*] Compiling professional Windows Installer wizard...")
+        iscc_cmd = [iscc, os.path.join(PROJECT_ROOT, 'installer.iss')]
+        res = subprocess.run(iscc_cmd, cwd=PROJECT_ROOT)
+        if res.returncode == 0:
+            installer_path = os.path.join(dist_dir, 'OmniDownloader-Setup-v1.0.0.exe')
+            print(f" [SUCCESS] Windows Installer created: {installer_path}")
+        else:
+            print("[!] Inno Setup compilation encountered a warning/error.")
+    else:
+        print("[!] Inno Setup compiler not found. Skipping installer exe generation.")
+
+    # 7. Clean up intermediate build directory
     if os.path.exists(build_dir):
         try:
             shutil.rmtree(build_dir, ignore_errors=True)
@@ -89,9 +164,11 @@ def build_app():
             pass
 
     print("\n" + "=" * 60)
-    print(" [SUCCESS] Omni Downloader v1.0 standalone build completed!")
-    print(f" Output folder: {output_app_dir}")
-    print(f" Release ZIP:   {zip_output_path}")
+    print(" [SUCCESS] Omni Downloader v1.0 compilation finished!")
+    print(f" Standalone folder: {output_app_dir}")
+    print(f" Portable ZIP:      {zip_output_path}")
+    if installer_path and os.path.exists(installer_path):
+        print(f" Setup Installer:   {installer_path}")
     print("=" * 60)
     return True
 

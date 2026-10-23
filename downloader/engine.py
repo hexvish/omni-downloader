@@ -12,21 +12,36 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def get_bin_dir():
     """Returns the path to the bin directory, ensuring it exists."""
     if getattr(sys, 'frozen', False):
-        # When running as compiled executable
-        base_dir = os.path.dirname(sys.executable)
-        bin_dir = os.path.join(base_dir, 'bin')
-        # If application folder is read-only (e.g. Program Files), fallback to LocalAppData
+        # When running as compiled executable (supports both --onedir and --onefile)
+        base_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+        bundled_bin = os.path.join(base_dir, 'bin')
+        exe_bin = os.path.join(os.path.dirname(sys.executable), 'bin')
+
+        target_bin = exe_bin if os.path.exists(exe_bin) else bundled_bin
+        
+        # If application folder is writable, use it; otherwise fallback to LocalAppData
         try:
-            os.makedirs(bin_dir, exist_ok=True)
-            test_file = os.path.join(bin_dir, '.write_test')
+            os.makedirs(target_bin, exist_ok=True)
+            test_file = os.path.join(target_bin, '.write_test')
             with open(test_file, 'w') as f:
                 f.write('1')
             os.remove(test_file)
-            return bin_dir
+            return target_bin
         except Exception:
             local_appdata = os.environ.get('LOCALAPPDATA', os.path.expanduser('~'))
             bin_dir = os.path.join(local_appdata, 'OmniDownloader', 'bin')
             os.makedirs(bin_dir, exist_ok=True)
+            # Copy bundled binaries to LocalAppData if not present
+            for src_dir in (exe_bin, bundled_bin):
+                if os.path.exists(src_dir):
+                    for fname in ('ffmpeg.exe', 'yt-dlp.exe'):
+                        s = os.path.join(src_dir, fname)
+                        d = os.path.join(bin_dir, fname)
+                        if os.path.exists(s) and not os.path.exists(d):
+                            try:
+                                shutil.copy2(s, d)
+                            except Exception:
+                                pass
             return bin_dir
     else:
         # Development / source code mode

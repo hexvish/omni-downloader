@@ -1,8 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('templates', 'templates'), ('static', 'static')]
-binaries = []
+datas = [('templates', 'templates'), ('static', 'static'), ('app.ico', '.')]
+binaries = [('C:/Program Files/Python311/vcruntime140_1.dll', '.'), ('C:/WINDOWS/System32/msvcp140.dll', '.')]
 hiddenimports = []
 tmp_ret = collect_all('webview')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
@@ -43,6 +43,8 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    version='D:/personal/projects/omni-downloader/version_info.txt',
+    icon=['D:/personal/projects/omni-downloader/app.ico'],
 )
 coll = COLLECT(
     exe,

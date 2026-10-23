@@ -21,7 +21,25 @@ from downloader.formatter import format_extraction_results
 from utils.validators import validate_url, sanitize_input
 from utils.cleanup import start_cleanup_worker
 
-app = Flask(__name__)
+if getattr(sys, 'frozen', False):
+    base_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+    template_candidates = [
+        os.path.join(base_dir, 'templates'),
+        os.path.join(base_dir, '_internal', 'templates'),
+        os.path.join(os.path.dirname(sys.executable), '_internal', 'templates')
+    ]
+    template_folder = next((p for p in template_candidates if os.path.isdir(p)), 'templates')
+
+    static_candidates = [
+        os.path.join(base_dir, 'static'),
+        os.path.join(base_dir, '_internal', 'static'),
+        os.path.join(os.path.dirname(sys.executable), '_internal', 'static')
+    ]
+    static_folder = next((p for p in static_candidates if os.path.isdir(p)), 'static')
+
+    app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
+else:
+    app = Flask(__name__)
 
 # Ensure download directory exists
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)

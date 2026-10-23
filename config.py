@@ -3,14 +3,25 @@ import sys
 import shutil
 
 # Application Settings
-DOWNLOAD_FOLDER = os.path.abspath('downloads')
+if getattr(sys, 'frozen', False):
+    # Default to user's Downloads/OmniDownloader directory to avoid permission issues
+    DOWNLOAD_FOLDER = os.path.join(os.path.expanduser('~'), 'Downloads', 'OmniDownloader')
+else:
+    DOWNLOAD_FOLDER = os.path.abspath('downloads')
+
 SOCKET_TIMEOUT = 20
 MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
 AUTO_UPDATE = True
 
 # Discover bin directory
 if getattr(sys, 'frozen', False):
-    BIN_DIR = os.path.join(os.path.dirname(sys.executable), 'bin')
+    base_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+    candidate = os.path.join(base_dir, 'bin')
+    if os.path.exists(candidate):
+        BIN_DIR = candidate
+    else:
+        exe_bin = os.path.join(os.path.dirname(sys.executable), 'bin')
+        BIN_DIR = exe_bin if os.path.exists(exe_bin) else candidate
 else:
     BIN_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'bin')
 
