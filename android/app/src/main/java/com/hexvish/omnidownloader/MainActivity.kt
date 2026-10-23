@@ -178,24 +178,23 @@ fun OmniMainScreen(
                     )
                 }
 
-                // Format & Bitrate Controls (also visible on ERROR so user can change settings & retry)
-                if (downloadState == DownloadState.READY_TO_DOWNLOAD || downloadState == DownloadState.ERROR) {
-                    FormatPillsSection(
-                        activeTab = activeTab,
-                        onTabChange = { viewModel.onTabChange(it) },
-                        selectedAudioCodec = audioCodec,
-                        onAudioCodecChange = { viewModel.onAudioCodecChange(it) },
-                        selectedBitrate = bitrate,
-                        onBitrateChange = { viewModel.onBitrateChange(it) },
-                        selectedVideoCodec = videoCodec,
-                        onVideoCodecChange = { viewModel.onVideoCodecChange(it) },
-                        selectedResolution = resolution,
-                        onResolutionChange = { viewModel.onResolutionChange(it) },
-                        onStartDownload = { viewModel.startDownload(context) },
-                        isPlaylist = meta.isPlaylist,
-                        selectedCount = meta.tracks.count { it.isSelected }
-                    )
-                }
+                // Format & Bitrate Controls (permanently visible matching Windows UX)
+                FormatPillsSection(
+                    activeTab = activeTab,
+                    onTabChange = { viewModel.onTabChange(it) },
+                    selectedAudioCodec = audioCodec,
+                    onAudioCodecChange = { viewModel.onAudioCodecChange(it) },
+                    selectedBitrate = bitrate,
+                    onBitrateChange = { viewModel.onBitrateChange(it) },
+                    selectedVideoCodec = videoCodec,
+                    onVideoCodecChange = { viewModel.onVideoCodecChange(it) },
+                    selectedResolution = resolution,
+                    onResolutionChange = { viewModel.onResolutionChange(it) },
+                    onStartDownload = { viewModel.startDownload(context) },
+                    isPlaylist = meta.isPlaylist,
+                    selectedCount = meta.tracks.count { it.isSelected },
+                    isDownloading = downloadState == DownloadState.DOWNLOADING
+                )
             }
 
             // Downloading Progress Card

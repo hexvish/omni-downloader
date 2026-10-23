@@ -153,6 +153,7 @@ class DownloadService : Service() {
                         }
                     }
 
+                    @Suppress("UNUSED_PARAMETER")
                     fun onCompleted(filePath: String) {
                         // Handled upon return
                     }
@@ -172,6 +173,16 @@ class DownloadService : Service() {
                         null
                     }
 
+                    val nativeDir = applicationInfo.nativeLibraryDir
+                    val candidates = listOf(
+                        File(nativeDir, "libffmpeg.so"),
+                        File(filesDir, "ffmpeg"),
+                        File(filesDir.parentFile, "lib/libffmpeg.so"),
+                        File(noBackupFilesDir, "ffmpeg/ffmpeg"),
+                        File(cacheDir.parentFile, "lib/libffmpeg.so")
+                    )
+                    val ffmpegPath = candidates.find { it.exists() }?.absolutePath
+
                     engine.callAttr(
                         "run_download",
                         url,
@@ -182,7 +193,8 @@ class DownloadService : Service() {
                         isPlaylist,
                         outputDir.absolutePath,
                         listener,
-                        pySelectedIndices
+                        pySelectedIndices,
+                        ffmpegPath
                     ).toString()
                 }
 

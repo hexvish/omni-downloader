@@ -20,6 +20,7 @@
     <application
         android:name=".OmniApplication"
         android:allowBackup="true"
+        android:extractNativeLibs="true"
         android:icon="@mipmap/ic_launcher"
         android:label="Omni Downloader"
         android:roundIcon="@mipmap/ic_launcher_round"

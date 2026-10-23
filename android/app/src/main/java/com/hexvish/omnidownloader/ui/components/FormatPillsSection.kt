@@ -38,6 +38,7 @@ fun FormatPillsSection(
     onStartDownload: () -> Unit,
     isPlaylist: Boolean,
     selectedCount: Int = 0,
+    isDownloading: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val audioCodecs = listOf("MP3", "M4A", "FLAC", "WAV")
@@ -229,8 +230,10 @@ fun FormatPillsSection(
             }
         }
 
-        val isEnabled = if (isPlaylist) selectedCount > 0 else true
-        val buttonText = if (isPlaylist) {
+        val isEnabled = !isDownloading && (if (isPlaylist) selectedCount > 0 else true)
+        val buttonText = if (isDownloading) {
+            "Downloading in progress..."
+        } else if (isPlaylist) {
             when {
                 selectedCount == 1 -> "Download 1 Track"
                 selectedCount > 1 -> "Download Selected ($selectedCount Tracks)"

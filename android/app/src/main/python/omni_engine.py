@@ -14,7 +14,7 @@ def get_ffmpeg_path():
         '/data/data/com.hexvish.omnidownloader/files/ffmpeg'
     ]
     for p in possible_paths:
-        if os.path.exists(p) and os.access(p, os.X_OK):
+        if os.path.exists(p):
             return p
     return None
 
@@ -27,6 +27,7 @@ def extract_media_info(url):
     ydl_opts = {
         'quiet': True,
         'no_warnings': True,
+        'ignoreerrors': True,
         'socket_timeout': 20,
         'extract_flat': is_playlist_url,
         'user_agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
@@ -86,12 +87,12 @@ def extract_media_info(url):
             'message': str(e)
         })
 
-def run_download(url, download_type, codec, bitrate, resolution, is_playlist, output_dir, progress_listener, selected_indices_raw=None):
+def run_download(url, download_type, codec, bitrate, resolution, is_playlist, output_dir, progress_listener, selected_indices_raw=None, custom_ffmpeg=None):
     """
-    Downloads media directly as individual files (NO ZIPs).
+    Downloads media directly as individual files with full FFmpeg transcoding when available.
     """
     os.makedirs(output_dir, exist_ok=True)
-    ffmpeg_exe = get_ffmpeg_path()
+    ffmpeg_exe = custom_ffmpeg if (custom_ffmpeg and os.path.exists(custom_ffmpeg)) else get_ffmpeg_path()
 
     # Safely parse selected indices from JSON string or list
     selected_indices = None
@@ -127,7 +128,7 @@ def _download_single(url, download_type, codec, bitrate, resolution, output_dir,
         elif d.get('status') == 'finished':
             if progress_listener:
                 try:
-                    progress_listener.onProgress(99.0, "", "Finalizing file...")
+                    progress_listener.onProgress(99.0, "", "Converting & finalizing...")
                 except Exception:
                     pass
 
@@ -135,6 +136,7 @@ def _download_single(url, download_type, codec, bitrate, resolution, output_dir,
         'outtmpl': outtmpl,
         'quiet': True,
         'no_warnings': True,
+        'ignoreerrors': True,
         'progress_hooks': [hook],
         'restrictfilenames': False,
         'user_agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
@@ -186,10 +188,14 @@ def _download_single(url, download_type, codec, bitrate, resolution, output_dir,
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
+            if not info:
+                raise Exception("Media stream unavailable or protected.")
             filename = ydl.prepare_filename(info)
             if download_type == 'audio' and ffmpeg_exe:
                 base, _ = os.path.splitext(filename)
-                filename = f"{base}.{(codec or 'mp3').lower()}"
+                expected = f"{base}.{(codec or 'mp3').lower()}"
+                if os.path.exists(expected):
+                    filename = expected
             elif not os.path.exists(filename):
                 base, _ = os.path.splitext(filename)
                 for f in os.listdir(output_dir):
@@ -216,6 +222,7 @@ def _download_playlist(url, download_type, codec, bitrate, resolution, output_di
     ydl_opts_meta = {
         'quiet': True,
         'extract_flat': True,
+        'ignoreerrors': True,
         'socket_timeout': 20,
     }
 
@@ -248,22 +255,31 @@ def _download_playlist(url, download_type, codec, bitrate, resolution, output_di
                 except Exception:
                     pass
 
-            # Download each track directly into output_dir
-            out_file = _download_single(track_url, download_type, codec, bitrate, resolution, output_dir, None, ffmpeg_exe)
-            if out_file and os.path.exists(out_file):
-                downloaded_files.append(out_file)
+            # Download each track with per-track error tolerance (skip unavailable without failing playlist)
+            try:
+                out_file = _download_single(track_url, download_type, codec, bitrate, resolution, output_dir, None, ffmpeg_exe)
+                if out_file and os.path.exists(out_file):
+                    downloaded_files.append(out_file)
+                    if progress_listener:
+                        try:
+                            progress_listener.onTrackFinished(out_file)
+                        except Exception:
+                            pass
+            except Exception as track_err:
+                # Log and continue remaining tracks in playlist
                 if progress_listener:
                     try:
-                        progress_listener.onTrackFinished(out_file)
+                        progress_listener.onProgress(float(pct), "", f"Skipped unavailable #{track_idx}: {track_title[:20]}")
                     except Exception:
                         pass
+                continue
 
         if not downloaded_files:
-            raise Exception("Failed to download any tracks from the selection.")
+            raise Exception("All selected tracks were unavailable or protected.")
 
         if progress_listener:
             try:
-                progress_listener.onProgress(100.0, "", "All tracks saved to library!")
+                progress_listener.onProgress(100.0, "", f"Saved {len(downloaded_files)} tracks to library!")
                 progress_listener.onCompleted(downloaded_files[0])
             except Exception:
                 pass

@@ -21,6 +21,13 @@ class OmniApplication : Application() {
             Python.start(AndroidPlatform(this))
         }
 
+        // Initialize FFmpeg native binary
+        try {
+            com.yausername.ffmpeg.FFmpeg.getInstance().init(this)
+        } catch (e: Throwable) {
+            e.printStackTrace()
+        }
+
         // Create notification channel for Foreground Service
         createNotificationChannel()
     }
