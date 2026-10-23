@@ -97,10 +97,6 @@ fun OmniMainScreen(
     val context = LocalContext.current
     val url by viewModel.url.collectAsState()
     val activeTab by viewModel.activeTab.collectAsState()
-    val audioCodec by viewModel.selectedAudioCodec.collectAsState()
-    val bitrate by viewModel.selectedBitrate.collectAsState()
-    val videoCodec by viewModel.selectedVideoCodec.collectAsState()
-    val resolution by viewModel.selectedResolution.collectAsState()
 
     val downloadState by viewModel.downloadState.collectAsState()
     val metadata by viewModel.metadata.collectAsState()
@@ -178,18 +174,10 @@ fun OmniMainScreen(
                     )
                 }
 
-                // Format & Bitrate Controls (permanently visible matching Windows UX)
+                // Audio vs Video Controls & Download Action
                 FormatPillsSection(
                     activeTab = activeTab,
                     onTabChange = { viewModel.onTabChange(it) },
-                    selectedAudioCodec = audioCodec,
-                    onAudioCodecChange = { viewModel.onAudioCodecChange(it) },
-                    selectedBitrate = bitrate,
-                    onBitrateChange = { viewModel.onBitrateChange(it) },
-                    selectedVideoCodec = videoCodec,
-                    onVideoCodecChange = { viewModel.onVideoCodecChange(it) },
-                    selectedResolution = resolution,
-                    onResolutionChange = { viewModel.onResolutionChange(it) },
                     onStartDownload = { viewModel.startDownload(context) },
                     isPlaylist = meta.isPlaylist,
                     selectedCount = meta.tracks.count { it.isSelected },
@@ -209,13 +197,15 @@ fun OmniMainScreen(
             // Completed Card
             if (downloadState == DownloadState.COMPLETED && completedFile != null) {
                 val file = completedFile!!
+                val isAudio = (activeTab == MediaTab.AUDIO)
                 val targetUri = publicUri ?: MediaStoreHelper.getFileUri(context, file)
-                val mimeType = MediaStoreHelper.getMimeType(file)
+                val mimeType = MediaStoreHelper.getMimeType(file, isAudio)
 
                 CompletedCard(
                     file = file,
+                    isAudio = isAudio,
                     onPlay = { MediaStoreHelper.openFile(context, targetUri, mimeType) },
-                    onShowInFolder = { MediaStoreHelper.openFolder(context, isAudio = activeTab == MediaTab.AUDIO) },
+                    onShowInFolder = { MediaStoreHelper.openFolder(context, isAudio = isAudio) },
                     onShare = { MediaStoreHelper.shareFile(context, targetUri, mimeType, file.name) },
                     onDownloadAnother = { viewModel.reset() }
                 )

@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -27,30 +28,17 @@ import com.hexvish.omnidownloader.ui.theme.*
 fun FormatPillsSection(
     activeTab: MediaTab,
     onTabChange: (MediaTab) -> Unit,
-    selectedAudioCodec: String,
-    onAudioCodecChange: (String) -> Unit,
-    selectedBitrate: String,
-    onBitrateChange: (String) -> Unit,
-    selectedVideoCodec: String,
-    onVideoCodecChange: (String) -> Unit,
-    selectedResolution: String,
-    onResolutionChange: (String) -> Unit,
     onStartDownload: () -> Unit,
     isPlaylist: Boolean,
     selectedCount: Int = 0,
     isDownloading: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val audioCodecs = listOf("MP3", "M4A", "FLAC", "WAV")
-    val bitrates = listOf("320", "256", "192", "128")
-    val videoCodecs = listOf("MP4", "MKV", "WEBM")
-    val resolutions = listOf("1080p", "720p", "480p", "360p")
-
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Audio vs Video Tab Switcher
         Row(
@@ -117,7 +105,7 @@ fun FormatPillsSection(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = "Video",
+                        text = "Video (Movies)",
                         fontSize = 13.sp,
                         fontWeight = if (activeTab == MediaTab.VIDEO) FontWeight.Bold else FontWeight.Medium,
                         color = if (activeTab == MediaTab.VIDEO) Color.White else TextSecondary
@@ -126,106 +114,65 @@ fun FormatPillsSection(
             }
         }
 
-        if (activeTab == MediaTab.AUDIO) {
-            // Audio Codecs
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "AUDIO FORMAT",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    color = CyanAccent
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+        // Quality Info Card
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color(0xFF0F172A))
+                .border(1.dp, GlassBorder, RoundedCornerShape(14.dp))
+                .padding(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0x2038BDF8)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    audioCodecs.forEach { codec ->
-                        FormatPill(
-                            label = codec,
-                            isSelected = selectedAudioCodec.equals(codec, ignoreCase = true),
-                            onClick = { onAudioCodecChange(codec) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    Icon(
+                        imageVector = if (activeTab == MediaTab.AUDIO) Icons.Default.Headphones else Icons.Default.HighQuality,
+                        contentDescription = null,
+                        tint = CyanAccent,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
-            }
 
-            // Bitrates
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "BITRATE QUALITY",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    color = CyanAccent
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    bitrates.forEach { br ->
-                        val label = when (br) {
-                            "320" -> "320 kbps"
-                            "256" -> "256 kbps"
-                            "192" -> "192 kbps"
-                            else -> "128 kbps"
-                        }
-                        FormatPill(
-                            label = label,
-                            isSelected = selectedBitrate == br,
-                            onClick = { onBitrateChange(br) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (activeTab == MediaTab.AUDIO) "ORIGINAL MASTER AUDIO" else "HIGHEST RESOLUTION VIDEO",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = if (activeTab == MediaTab.AUDIO)
+                            "Source quality • Saved to Music"
+                        else
+                            "Best quality with audio • Saved to Movies",
+                        fontSize = 11.sp,
+                        color = TextMuted
+                    )
                 }
-            }
-        } else {
-            // Video Codecs
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "CONTAINER FORMAT",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    color = CyanAccent
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    videoCodecs.forEach { codec ->
-                        FormatPill(
-                            label = codec,
-                            isSelected = selectedVideoCodec.equals(codec, ignoreCase = true),
-                            onClick = { onVideoCodecChange(codec) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
 
-            // Resolutions
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "RESOLUTION",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp,
-                    color = CyanAccent
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0x3010B981))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
-                    resolutions.forEach { res ->
-                        FormatPill(
-                            label = res,
-                            isSelected = selectedResolution == res,
-                            onClick = { onResolutionChange(res) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    Text(
+                        text = "Native",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF34D399)
+                    )
                 }
             }
         }
@@ -235,12 +182,12 @@ fun FormatPillsSection(
             "Downloading in progress..."
         } else if (isPlaylist) {
             when {
-                selectedCount == 1 -> "Download 1 Track"
-                selectedCount > 1 -> "Download Selected ($selectedCount Tracks)"
-                else -> "Select Tracks to Download"
+                selectedCount == 1 -> if (activeTab == MediaTab.AUDIO) "Download 1 Track" else "Download 1 Video"
+                selectedCount > 1 -> if (activeTab == MediaTab.AUDIO) "Download Selected ($selectedCount Tracks)" else "Download Selected ($selectedCount Videos)"
+                else -> "Select Items to Download"
             }
         } else {
-            "Download Media (${if (activeTab == MediaTab.AUDIO) selectedAudioCodec else selectedVideoCodec})"
+            if (activeTab == MediaTab.AUDIO) "Download Audio (Best Quality)" else "Download Video (Best Quality)"
         }
 
         // Start Download Button
@@ -249,7 +196,7 @@ fun FormatPillsSection(
             enabled = isEnabled,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .height(52.dp)
                 .clip(RoundedCornerShape(16.dp)),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.Transparent,
@@ -288,36 +235,5 @@ fun FormatPillsSection(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun FormatPill(
-    label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(
-                if (isSelected) Color(0x3038BDF8) else Color(0xFF1E293B)
-            )
-            .border(
-                1.dp,
-                if (isSelected) CyanAccent else Color(0x2038BDF8),
-                RoundedCornerShape(10.dp)
-            )
-            .clickable { onClick() }
-            .padding(vertical = 10.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = if (isSelected) CyanAccent else TextSecondary
-        )
     }
 }

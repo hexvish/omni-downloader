@@ -138,10 +138,7 @@ object OmniDownloadController {
     fun startDownload(
         context: Context,
         url: String,
-        downloadType: String,
-        codec: String,
-        bitrate: String,
-        resolution: String
+        downloadType: String
     ) {
         val meta = _metadata.value
         val isPlaylist = meta?.isPlaylist ?: false
@@ -169,9 +166,6 @@ object OmniDownloadController {
             action = DownloadService.ACTION_START_DOWNLOAD
             putExtra(DownloadService.EXTRA_URL, effectiveUrl)
             putExtra(DownloadService.EXTRA_TYPE, downloadType)
-            putExtra(DownloadService.EXTRA_CODEC, codec)
-            putExtra(DownloadService.EXTRA_BITRATE, bitrate)
-            putExtra(DownloadService.EXTRA_RESOLUTION, resolution)
             putExtra(DownloadService.EXTRA_IS_PLAYLIST, effectiveIsPlaylist)
             putExtra(DownloadService.EXTRA_TITLE, meta?.title ?: "Download")
             putExtra(DownloadService.EXTRA_SELECTED_INDICES, selectedIndices)
@@ -183,10 +177,7 @@ object OmniDownloadController {
     fun startSingleTrackDownload(
         context: Context,
         track: TrackItem,
-        downloadType: String,
-        codec: String,
-        bitrate: String,
-        resolution: String
+        downloadType: String
     ) {
         _downloadState.value = DownloadState.DOWNLOADING
         _progress.value = DownloadProgress(0f, "", "Starting download for ${track.title}...")
@@ -198,9 +189,6 @@ object OmniDownloadController {
             action = DownloadService.ACTION_START_DOWNLOAD
             putExtra(DownloadService.EXTRA_URL, track.url)
             putExtra(DownloadService.EXTRA_TYPE, downloadType)
-            putExtra(DownloadService.EXTRA_CODEC, codec)
-            putExtra(DownloadService.EXTRA_BITRATE, bitrate)
-            putExtra(DownloadService.EXTRA_RESOLUTION, resolution)
             putExtra(DownloadService.EXTRA_IS_PLAYLIST, false)
             putExtra(DownloadService.EXTRA_TITLE, track.title)
             putExtra(DownloadService.EXTRA_SELECTED_INDICES, intArrayOf())

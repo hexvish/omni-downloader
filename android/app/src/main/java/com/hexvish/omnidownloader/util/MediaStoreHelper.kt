@@ -16,31 +16,39 @@ import java.io.FileInputStream
 
 object MediaStoreHelper {
 
-    fun getMimeType(file: File): String {
+    fun getMimeType(file: File, isAudio: Boolean): String {
         val extension = file.extension.lowercase()
-        return when (extension) {
-            "mp3" -> "audio/mpeg"
-            "m4a" -> "audio/mp4"
-            "flac" -> "audio/flac"
-            "wav" -> "audio/wav"
-            "opus" -> "audio/opus"
-            "mp4" -> "video/mp4"
-            "mkv" -> "video/x-matroska"
-            "webm" -> "video/webm"
-            else -> MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "*/*"
+        return if (isAudio) {
+            when (extension) {
+                "m4a" -> "audio/mp4"
+                "mp3" -> "audio/mpeg"
+                "flac" -> "audio/flac"
+                "wav" -> "audio/wav"
+                "opus" -> "audio/opus"
+                "ogg" -> "audio/ogg"
+                "webm" -> "audio/webm"
+                else -> MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "audio/*"
+            }
+        } else {
+            when (extension) {
+                "mp4" -> "video/mp4"
+                "mkv" -> "video/x-matroska"
+                "webm" -> "video/webm"
+                "3gp" -> "video/3gpp"
+                else -> MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "video/mp4"
+            }
         }
     }
 
     /**
-     * Saves downloaded file to Android public MediaStore (Music or Movies)
+     * Saves downloaded file to Android public MediaStore (Music or Movies based on type)
      * so it appears instantly in Samsung Music, YouTube Music, Google Files, and Gallery.
      */
-    fun saveToPublicStorage(context: Context, sourceFile: File): Uri? {
+    fun saveToPublicStorage(context: Context, sourceFile: File, isAudio: Boolean): Uri? {
         if (!sourceFile.exists()) return null
 
         val filename = sourceFile.name
-        val mimeType = getMimeType(sourceFile)
-        val isAudio = mimeType.startsWith("audio")
+        val mimeType = getMimeType(sourceFile, isAudio)
 
         val collectionUri: Uri = if (isAudio) {
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI

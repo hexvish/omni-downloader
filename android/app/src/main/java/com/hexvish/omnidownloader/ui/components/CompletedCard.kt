@@ -27,6 +27,7 @@ import java.io.File
 @Composable
 fun CompletedCard(
     file: File,
+    isAudio: Boolean,
     onPlay: () -> Unit,
     onShowInFolder: () -> Unit,
     onShare: () -> Unit,
@@ -34,7 +35,6 @@ fun CompletedCard(
     modifier: Modifier = Modifier
 ) {
     val fileSizeMb = String.format("%.1f MB", file.length() / (1024.0 * 1024.0))
-    val isAudio = file.extension.lowercase() in listOf("mp3", "m4a", "flac", "wav", "opus")
     val locationText = if (isAudio) "Saved to Music/Omni Downloader" else "Saved to Movies/Omni Downloader"
 
     Box(

@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -28,9 +29,6 @@ class DownloadService : Service() {
 
         const val EXTRA_URL = "extra_url"
         const val EXTRA_TYPE = "extra_type"
-        const val EXTRA_CODEC = "extra_codec"
-        const val EXTRA_BITRATE = "extra_bitrate"
-        const val EXTRA_RESOLUTION = "extra_resolution"
         const val EXTRA_IS_PLAYLIST = "extra_is_playlist"
         const val EXTRA_TITLE = "extra_title"
         const val EXTRA_SELECTED_INDICES = "extra_selected_indices"
@@ -53,15 +51,12 @@ class DownloadService : Service() {
             ACTION_START_DOWNLOAD -> {
                 val url = intent.getStringExtra(EXTRA_URL) ?: ""
                 val type = intent.getStringExtra(EXTRA_TYPE) ?: "audio"
-                val codec = intent.getStringExtra(EXTRA_CODEC) ?: "mp3"
-                val bitrate = intent.getStringExtra(EXTRA_BITRATE) ?: "320"
-                val resolution = intent.getStringExtra(EXTRA_RESOLUTION) ?: "1080p"
                 val isPlaylist = intent.getBooleanExtra(EXTRA_IS_PLAYLIST, false)
                 val title = intent.getStringExtra(EXTRA_TITLE) ?: "Omni Download"
                 val selectedIndices = intent.getIntArrayExtra(EXTRA_SELECTED_INDICES) ?: intArrayOf()
 
                 startForegroundWithNotification(title)
-                startDownloadTask(url, type, codec, bitrate, resolution, isPlaylist, title, selectedIndices)
+                startDownloadTask(url, type, isPlaylist, title, selectedIndices)
             }
             ACTION_CANCEL_DOWNLOAD -> {
                 downloadJob?.cancel()
@@ -124,20 +119,19 @@ class DownloadService : Service() {
     private fun startDownloadTask(
         url: String,
         type: String,
-        codec: String,
-        bitrate: String,
-        resolution: String,
         isPlaylist: Boolean,
         title: String,
         selectedIndices: IntArray
     ) {
+        val isAudio = (type == "audio")
         downloadJob?.cancel()
         downloadJob = scope.launch {
             try {
                 val outputDir = File(cacheDir, "omni_downloads").apply { mkdirs() }
+                var firstPublicUri: Uri? = null
+                var firstCompletedFile: File? = null
 
                 val listener = object : Any() {
-                    // Chaquopy calls these methods dynamically
                     fun onProgress(percentage: Double, speed: String, statusText: String) {
                         val pctFloat = percentage.toFloat()
                         OmniDownloadController.updateProgress(pctFloat, speed, statusText)
@@ -149,7 +143,11 @@ class DownloadService : Service() {
                     fun onTrackFinished(filePath: String) {
                         val f = File(filePath)
                         if (f.exists()) {
-                            MediaStoreHelper.saveToPublicStorage(this@DownloadService, f)
+                            val uri = MediaStoreHelper.saveToPublicStorage(this@DownloadService, f, isAudio)
+                            if (firstPublicUri == null) {
+                                firstPublicUri = uri
+                                firstCompletedFile = f
+                            }
                         }
                     }
 
@@ -159,7 +157,9 @@ class DownloadService : Service() {
                     }
 
                     fun onError(errorMessage: String) {
-                        OmniDownloadController.onDownloadError(errorMessage)
+                        if (!isPlaylist) {
+                            OmniDownloadController.onDownloadError(errorMessage)
+                        }
                     }
                 }
 
@@ -173,39 +173,31 @@ class DownloadService : Service() {
                         null
                     }
 
-                    val nativeDir = applicationInfo.nativeLibraryDir
-                    val candidates = listOf(
-                        File(nativeDir, "libffmpeg.so"),
-                        File(filesDir, "ffmpeg"),
-                        File(filesDir.parentFile, "lib/libffmpeg.so"),
-                        File(noBackupFilesDir, "ffmpeg/ffmpeg"),
-                        File(cacheDir.parentFile, "lib/libffmpeg.so")
-                    )
-                    val ffmpegPath = candidates.find { it.exists() }?.absolutePath
-
                     engine.callAttr(
                         "run_download",
                         url,
                         type,
-                        codec,
-                        bitrate,
-                        resolution,
                         isPlaylist,
                         outputDir.absolutePath,
                         listener,
-                        pySelectedIndices,
-                        ffmpegPath
+                        pySelectedIndices
                     ).toString()
                 }
 
                 val downloadedFile = File(downloadedFilePath)
-                if (downloadedFile.exists()) {
-                    // Copy to Android Public MediaStore
-                    val publicUri = MediaStoreHelper.saveToPublicStorage(this@DownloadService, downloadedFile)
-                    OmniDownloadController.onDownloadCompleted(downloadedFile, publicUri)
-                    showCompletionNotification(downloadedFile, title)
+                if (isPlaylist) {
+                    val finalFile = firstCompletedFile ?: downloadedFile
+                    val finalUri = firstPublicUri ?: MediaStoreHelper.saveToPublicStorage(this@DownloadService, finalFile, isAudio)
+                    OmniDownloadController.onDownloadCompleted(finalFile, finalUri)
+                    showCompletionNotification(finalFile, title)
                 } else {
-                    OmniDownloadController.onDownloadError("Downloaded file could not be verified on disk.")
+                    if (downloadedFile.exists()) {
+                        val publicUri = MediaStoreHelper.saveToPublicStorage(this@DownloadService, downloadedFile, isAudio)
+                        OmniDownloadController.onDownloadCompleted(downloadedFile, publicUri)
+                        showCompletionNotification(downloadedFile, title)
+                    } else {
+                        OmniDownloadController.onDownloadError("Downloaded file could not be verified on disk.")
+                    }
                 }
 
             } catch (e: Exception) {
