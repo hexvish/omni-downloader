@@ -40,7 +40,7 @@ def find_runtime_dlls():
 
 def build_app():
     print("=" * 60)
-    print("       Building Omni Downloader v1.0 Standalone & Installer")
+    print("       Building Omni Downloader v1.0.1 Standalone & Installer")
     print("=" * 60)
 
     # 1. Ensure pyinstaller is available
@@ -131,7 +131,7 @@ def build_app():
             shutil.copy2(src, output_app_dir)
 
     # 5. Create ready-to-distribute ZIP archive
-    zip_output_path = os.path.join(dist_dir, 'OmniDownloader-v1.0.0-Windows.zip')
+    zip_output_path = os.path.join(dist_dir, 'OmniDownloader-v1.0.1-Windows.zip')
     print(f"[*] Packaging into portable ZIP: {zip_output_path}...")
     with zipfile.ZipFile(zip_output_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, _, files in os.walk(output_app_dir):
@@ -149,7 +149,7 @@ def build_app():
         iscc_cmd = [iscc, os.path.join(PROJECT_ROOT, 'installer.iss')]
         res = subprocess.run(iscc_cmd, cwd=PROJECT_ROOT)
         if res.returncode == 0:
-            installer_path = os.path.join(dist_dir, 'OmniDownloader-Setup-v1.0.0.exe')
+            installer_path = os.path.join(dist_dir, 'OmniDownloader-Setup-v1.0.1.exe')
             print(f" [SUCCESS] Windows Installer created: {installer_path}")
         else:
             print("[!] Inno Setup compilation encountered a warning/error.")
@@ -164,7 +164,7 @@ def build_app():
             pass
 
     print("\n" + "=" * 60)
-    print(" [SUCCESS] Omni Downloader v1.0 compilation finished!")
+    print(" [SUCCESS] Omni Downloader v1.0.1 compilation finished!")
     print(f" Standalone folder: {output_app_dir}")
     print(f" Portable ZIP:      {zip_output_path}")
     if installer_path and os.path.exists(installer_path):
