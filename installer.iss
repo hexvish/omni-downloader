@@ -1,8 +1,8 @@
-; Inno Setup Script for Omni Downloader v1.0.1
+; Inno Setup Script for Omni Downloader v1.0.2
 ; High-performance, portable-ready installer with zero-admin requirements
 
 #define MyAppName "Omni Downloader"
-#define MyAppVersion "1.0.1"
+#define MyAppVersion "1.0.2"
 #define MyAppPublisher "Omni Downloader"
 #define MyAppURL "https://github.com/hexvish/omni-downloader"
 #define MyAppExeName "OmniDownloader.exe"

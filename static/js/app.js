@@ -419,17 +419,11 @@ function createTaskCard(taskId, params, totalExpected) {
             <span id="speed-${taskId}">-- MB/s</span>
         </div>
         <div id="success-action-${taskId}" class="progress-success-action" style="display: none;">
-            <button type="button" class="btn-save-file" id="btn-save-${taskId}" onclick="handleSaveFile('${taskId}')" title="Choose where to save this file">
+            <button type="button" class="btn-save-file" id="btn-save-${taskId}" onclick="handleSaveFile('${taskId}')" title="Move and save this file to a custom location">
                 <span>💾 Save As...</span>
-            </button>
-            <button type="button" class="btn-action-secondary" id="btn-quick-save-${taskId}" onclick="handleQuickSave('${taskId}')" title="Save directly to Windows Downloads folder">
-                <span>📥 Save to Downloads</span>
             </button>
             <button type="button" class="btn-action-secondary" id="btn-open-${taskId}" onclick="handleOpenFile('${taskId}')" title="Play or Open File">
                 <span>▶ Open</span>
-            </button>
-            <button type="button" class="btn-action-secondary" id="btn-reveal-${taskId}" onclick="handleRevealFile('${taskId}')" title="Show in File Explorer">
-                <span>📂 Show in Folder</span>
             </button>
         </div>
     `;
@@ -676,7 +670,7 @@ async function handleSaveFile(taskId) {
     if (!task || !task.filename) return;
     const btn = document.getElementById(`btn-save-${taskId}`);
     const originalText = btn ? btn.innerHTML : '';
-    if (btn) btn.innerHTML = `<span>⏳ Saving...</span>`;
+    if (btn) btn.innerHTML = `<span>⏳ Moving...</span>`;
 
     try {
         const formData = new FormData();
@@ -686,8 +680,11 @@ async function handleSaveFile(taskId) {
         const res = await fetch('/api/save_file', { method: 'POST', body: formData });
         const data = await res.json();
         if (data.success) {
-            showStatus(`File saved to: ${data.saved_to}`, 'success');
-            if (btn) btn.innerHTML = `<span>✅ Saved</span>`;
+            showStatus(`File moved to: ${data.saved_to}`, 'success');
+            if (btn) {
+                btn.innerHTML = `<span>✅ Moved</span>`;
+                btn.disabled = true;
+            }
         } else if (data.cancelled) {
             if (btn) btn.innerHTML = originalText;
         } else {
@@ -695,7 +692,7 @@ async function handleSaveFile(taskId) {
             if (btn) btn.innerHTML = originalText;
         }
     } catch (e) {
-        showStatus('Error saving file.', 'error');
+        showStatus('Error moving file.', 'error');
         if (btn) btn.innerHTML = originalText;
     }
 }
@@ -788,10 +785,78 @@ async function checkEngineStatus() {
     }
 }
 
-// Initial engine check on page load
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
+// Initial engine and update check on page load
+function initAppChecks() {
     checkEngineStatus();
+    checkAppUpdates();
+}
+
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initAppChecks();
 } else {
-    document.addEventListener('DOMContentLoaded', checkEngineStatus);
+    document.addEventListener('DOMContentLoaded', initAppChecks);
+}
+
+// --- In-App Update Checker ---
+let currentUpdateInfo = null;
+
+async function checkAppUpdates() {
+    try {
+        const res = await fetch('/api/check_app_update');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success && data.update_available) {
+            currentUpdateInfo = data;
+            const banner = document.getElementById('appUpdateBanner');
+            const versionTag = document.getElementById('updateVersionTag');
+            if (banner && versionTag) {
+                versionTag.textContent = data.latest_version || 'New Version';
+                banner.style.display = 'flex';
+            }
+        }
+    } catch (e) {
+        // Silently skip update check on offline or network error
+    }
+}
+
+function dismissAppUpdateBanner() {
+    const banner = document.getElementById('appUpdateBanner');
+    if (banner) banner.style.display = 'none';
+}
+
+async function handleApplyAppUpdate() {
+    if (!currentUpdateInfo) return;
+    const btnText = document.getElementById('updateBtnText');
+    const loader = document.getElementById('updateBtnLoader');
+    const btn = document.getElementById('btnUpdateNow');
+    if (btn) btn.disabled = true;
+    if (btnText) btnText.textContent = 'Launching...';
+    if (loader) loader.style.display = 'inline-block';
+
+    try {
+        const formData = new FormData();
+        if (currentUpdateInfo.installer_url) formData.append('installer_url', currentUpdateInfo.installer_url);
+        if (currentUpdateInfo.release_url) formData.append('release_url', currentUpdateInfo.release_url);
+
+        const res = await fetch('/api/apply_update', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success) {
+            if (data.started) {
+                showStatus('Downloading and starting installer. The application will close shortly.', 'info');
+            } else {
+                showStatus('Opening GitHub release page in your browser.', 'info');
+            }
+        } else {
+            showStatus('Failed to launch update: ' + (data.error || 'Unknown error'), 'error');
+            if (btn) btn.disabled = false;
+            if (btnText) btnText.textContent = 'Update Now';
+            if (loader) loader.style.display = 'none';
+        }
+    } catch (e) {
+        showStatus('Error launching updater.', 'error');
+        if (btn) btn.disabled = false;
+        if (btnText) btnText.textContent = 'Update Now';
+        if (loader) loader.style.display = 'none';
+    }
 }
 

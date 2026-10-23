@@ -12,6 +12,8 @@ else:
 SOCKET_TIMEOUT = 20
 MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
 AUTO_UPDATE = True
+APP_VERSION = "1.0.2"
+GITHUB_REPO = "hexvish/omni-downloader"
 
 # Discover bin directory
 if getattr(sys, 'frozen', False):

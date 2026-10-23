@@ -86,7 +86,7 @@ Omni Downloader leverages `yt-dlp`, supporting hundreds of platforms including:
 ## ⚙️ Installation & Usage
 
 ### 📦 Windows Installer (Recommended for End Users)
-Download the latest **`OmniDownloader-Setup-v1.0.1.exe`** from [**Releases**](https://github.com/hexvish/omni-downloader/releases):
+Download the latest **`OmniDownloader-Setup-v1.0.2.exe`** from [**Releases**](https://github.com/hexvish/omni-downloader/releases):
 - **1-Click Setup**: Installs to your user profile without requiring administrator/UAC privileges.
 - **Self-Contained Engine**: Bundles `FFmpeg`, `yt-dlp`, and all required C++ runtimes out of the box—no manual environment setup required.
 - **Desktop & Start Menu Shortcuts**: Full Windows integration with custom application icon.
@@ -122,8 +122,8 @@ To compile the standalone desktop distribution and Windows Installer wizard your
    python build_standalone.py
    ```
 3. The compiled outputs will be available in the `dist/` directory:
-   - `dist/OmniDownloader-Setup-v1.0.1.exe` (Windows Installer wizard)
-   - `dist/OmniDownloader-v1.0.1-Windows.zip` (Portable standalone folder)
+   - `dist/OmniDownloader-Setup-v1.0.2.exe` (Windows Installer wizard)
+   - `dist/OmniDownloader-v1.0.2-Windows.zip` (Portable standalone folder)
 
 ---
 

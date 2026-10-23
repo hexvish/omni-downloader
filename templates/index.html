@@ -13,6 +13,21 @@
 </head>
 <body>
     <div class="container">
+        <!-- In-App Update Banner -->
+        <div id="appUpdateBanner" class="app-update-banner" style="display: none;">
+            <div class="update-banner-left">
+                <span class="update-pulse-dot"></span>
+                <span class="update-text">✨ Update available: <strong id="updateVersionTag">v1.0.3</strong></span>
+            </div>
+            <div class="update-banner-right">
+                <button type="button" class="btn-update-now" id="btnUpdateNow" onclick="handleApplyAppUpdate()">
+                    <span id="updateBtnText">Update Now</span>
+                    <span id="updateBtnLoader" class="spinner" style="display: none; width: 12px; height: 12px;"></span>
+                </button>
+                <button type="button" class="btn-dismiss-update" onclick="dismissAppUpdateBanner()" title="Dismiss">&times;</button>
+            </div>
+        </div>
+
         <!-- Header -->
         <div class="header">
             <div class="badge-tag">
