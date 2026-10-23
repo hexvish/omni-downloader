@@ -65,7 +65,13 @@ omni-downloader/
 │   └── img/icon.png        # Official high-resolution logo artwork
 ├── templates/
 │   └── index.html          # Lightweight semantic HTML interface
-└── downloads/              # Temporary download staging area
+├── downloads/              # Temporary download staging area
+└── android/                # Native Android application (Jetpack Compose + Chaquopy)
+    ├── app/
+    │   ├── src/main/java/  # Native Kotlin UI, Foreground Service & MediaStore
+    │   ├── src/main/python/# Embedded Chaquopy yt-dlp downloader engine
+    │   └── src/main/res/   # Multi-density icons and application themes
+    └── build.gradle.kts    # AGP & Gradle configuration
 ```
 
 ---
@@ -85,13 +91,23 @@ Omni Downloader leverages `yt-dlp`, supporting hundreds of platforms including:
 
 ## ⚙️ Installation & Usage
 
-### 📦 Windows Installer (Recommended for End Users)
+### 📱 Android APK (Mobile)
+Download the latest **`OmniDownloader-v1.0.2.apk`** from [**Releases**](https://github.com/hexvish/omni-downloader/releases):
+- **Native Jetpack Compose UI**: Stunning dark glassmorphism design matching the desktop application.
+- **System Share Sheet Integration**: Tap **Share** in the YouTube, Spotify, TikTok, or Instagram app and choose **Omni Downloader** to instantly analyze and download.
+- **Background Foreground Service**: Persistent live progress notifications and download speed indicator that continue when the screen is locked or while multitasking.
+- **Scoped Storage & Media Library**: Completed songs and videos automatically appear in your phone's Music player (Samsung Music, YouTube Music) and Gallery.
+- **Dual Completion Actions**: Single-tap **Save As...** to pick any destination folder/SD card or **Open** to immediately launch playback in your favorite media player.
+
+---
+
+### 📦 Windows Installer (Desktop)
 Download the latest **`OmniDownloader-Setup-v1.0.2.exe`** from [**Releases**](https://github.com/hexvish/omni-downloader/releases):
 - **1-Click Setup**: Installs to your user profile without requiring administrator/UAC privileges.
 - **Self-Contained Engine**: Bundles `FFmpeg`, `yt-dlp`, and all required C++ runtimes out of the box—no manual environment setup required.
 - **Desktop & Start Menu Shortcuts**: Full Windows integration with custom application icon.
 - **Dual-Mode GUI**: Runs as a lightweight native desktop app powered by Edge WebView2 with automatic browser fallback.
-- **Auto-Updating Engine**: Automatically keeps `yt-dlp` updated on launch so downloads never break when platforms update.
+- **In-App Auto-Update Checker**: Checks GitHub releases on startup and prompts for one-click seamless upgrades.
 
 ---
 
@@ -124,6 +140,23 @@ To compile the standalone desktop distribution and Windows Installer wizard your
 3. The compiled outputs will be available in the `dist/` directory:
    - `dist/OmniDownloader-Setup-v1.0.2.exe` (Windows Installer wizard)
    - `dist/OmniDownloader-v1.0.2-Windows.zip` (Portable standalone folder)
+
+---
+
+### 📱 Building the Android App (.apk)
+
+To build the native Android APK:
+
+1. Ensure JDK 17+ or JDK 21 (e.g. from Android Studio) is available and `JAVA_HOME` is set.
+2. Navigate to the `android/` directory and execute:
+   ```bash
+   cd android
+   ./gradlew assembleRelease
+   ```
+   *(On Windows Command Prompt: `gradlew.bat assembleRelease`)*
+3. The signed, installable release APK will be generated at:
+   - `android/app/build/outputs/apk/release/app-release.apk`
+   - Copy or rename to `OmniDownloader-v1.0.2.apk` for release.
 
 ---
 
