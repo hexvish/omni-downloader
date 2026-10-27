@@ -12,3 +12,5 @@ dist/
 server/sessions.json
 cookies.txt
 *.tmp
+oracle_deployment_checklist.md
+
