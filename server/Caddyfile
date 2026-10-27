@@ -1,0 +1,35 @@
+# Caddy configuration for Omni Downloader on Oracle Cloud
+# Serves automatic HTTPS for omnidl.duckdns.org and reverse proxies to Gunicorn on loopback
+
+omnidl.duckdns.org {
+    # Reverse proxy to Gunicorn WSGI bound strictly to loopback
+    reverse_proxy 127.0.0.1:8000 {
+        # Forward proper client headers
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+
+        # Generous timeout for long-running video muxing and large file transfers
+        transport http {
+            read_timeout 600s
+            write_timeout 600s
+        }
+    }
+
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Log requests
+    log {
+        output file /var/log/caddy/omnidl.access.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+    }
+}

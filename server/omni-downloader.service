@@ -1,0 +1,33 @@
+[Unit]
+Description=Omni Downloader Production Gunicorn Service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/omni-downloader
+Environment="PATH=/opt/omni-downloader/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="OMNI_MODE=server"
+Environment="SERVER_MAX_FILE_SIZE=524288000"
+Environment="DOWNLOAD_DIR=/var/lib/omni-downloader/downloads"
+
+ExecStart=/opt/omni-downloader/.venv/bin/gunicorn \
+    --workers 1 \
+    --threads 4 \
+    --bind 127.0.0.1:8000 \
+    --timeout 600 \
+    --access-logfile - \
+    --error-logfile - \
+    server.app:app
+
+Restart=always
+RestartSec=5
+KillMode=mixed
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

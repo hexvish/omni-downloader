@@ -11,14 +11,15 @@ echo               Omni Downloader Launcher
 echo ========================================================
 echo.
 
-:: 1. Verify app.py exists (ensures user extracted the ZIP)
-if not exist "%~dp0app.py" (
-    echo [ERROR] Cannot find app.py!
+:: 1. Verify windows\app.py exists (ensures user extracted the ZIP)
+if not exist "%~dp0windows\app.py" (
+    echo [ERROR] Cannot find windows\app.py!
     echo Please make sure you have EXTRACTED the ZIP folder before running run.bat.
     echo.
     pause
     exit /b 1
 )
+
 
 :: 2. Verify Python Installation
 python --version >nul 2>&1
@@ -81,7 +82,8 @@ echo.
 start "" cmd /c "timeout /t 2 /nobreak >nul & start http://localhost:5000"
 
 :: 8. Run the Flask application
-python "%~dp0app.py"
+python "%~dp0windows\app.py"
+
 
 echo.
 echo The application server has stopped.

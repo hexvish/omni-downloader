@@ -5,8 +5,17 @@ import socket
 import threading
 import traceback
 import webbrowser
+
+WINDOWS_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(WINDOWS_DIR)
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+if WINDOWS_DIR not in sys.path:
+    sys.path.insert(0, WINDOWS_DIR)
+
 from app import app
 from downloader.engine import init_engine
+
 
 def get_appdata_dir():
     """Returns persistent application directory for logs and state."""

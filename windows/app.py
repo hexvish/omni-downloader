@@ -6,6 +6,11 @@ import time
 import threading
 from flask import Flask, render_template, request, jsonify, send_from_directory
 
+# Ensure repository root is on sys.path for shared core imports
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 # Module imports
 from config import DOWNLOAD_FOLDER, APP_VERSION, GITHUB_REPO
 from downloader.updater import check_for_updates
@@ -39,7 +44,12 @@ if getattr(sys, 'frozen', False):
 
     app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
 else:
-    app = Flask(__name__)
+    app = Flask(
+        __name__,
+        template_folder=os.path.join(ROOT_DIR, 'templates'),
+        static_folder=os.path.join(ROOT_DIR, 'static')
+    )
+
 
 # Ensure download directory exists
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)

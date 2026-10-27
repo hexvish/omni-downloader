@@ -25,7 +25,7 @@ AllowNoIcons=yes
 LicenseFile=LICENSE
 OutputDir=dist
 OutputBaseFilename=OmniDownloader-Setup-v{#MyAppVersion}
-SetupIconFile=app.ico
+SetupIconFile=windows\app.ico
 UninstallDisplayIcon={app}\app.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -45,7 +45,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 ; Copy all packaged files from dist\OmniDownloader into the user's installation directory
 Source: "dist\OmniDownloader\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "app.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "windows\app.ico"; DestDir: "{app}"; Flags: ignoreversion
+
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"

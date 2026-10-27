@@ -9,3 +9,6 @@ build/
 dist/
 .env
 .DS_Store
+server/sessions.json
+cookies.txt
+*.tmp

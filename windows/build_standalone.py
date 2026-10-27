@@ -4,7 +4,8 @@ import shutil
 import zipfile
 import subprocess
 
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+WINDOWS_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(WINDOWS_DIR)
 
 def find_inno_compiler():
     """Finds Inno Setup command-line compiler (iscc.exe)."""
@@ -69,8 +70,8 @@ def build_app():
         '--noconsole',
         '--onedir',
         '--name', 'OmniDownloader',
-        '--add-data', f'templates{sep}templates',
-        '--add-data', f'static{sep}static',
+        '--add-data', f'{os.path.join(PROJECT_ROOT, "templates")}{sep}templates',
+        '--add-data', f'{os.path.join(PROJECT_ROOT, "static")}{sep}static',
         '--collect-all', 'webview',
         '--collect-all', 'yt_dlp',
         '--collect-all', 'imageio_ffmpeg',
@@ -81,13 +82,13 @@ def build_app():
     ]
 
     # Add app icon
-    ico_path = os.path.join(PROJECT_ROOT, 'app.ico')
+    ico_path = os.path.join(WINDOWS_DIR, 'app.ico')
     if os.path.exists(ico_path):
         cmd.extend(['--icon', ico_path])
-        cmd.extend(['--add-data', f'app.ico{sep}.'])
+        cmd.extend(['--add-data', f'{ico_path}{sep}.'])
 
     # Add version info if present
-    ver_path = os.path.join(PROJECT_ROOT, 'version_info.txt')
+    ver_path = os.path.join(WINDOWS_DIR, 'version_info.txt')
     if os.path.exists(ver_path):
         cmd.extend(['--version-file', ver_path])
 
@@ -97,7 +98,8 @@ def build_app():
         print(f"[*] Bundling C++ runtime dependency: {name} -> {path}")
         cmd.extend(['--add-binary', f'{path}{sep}.'])
 
-    cmd.append(os.path.join(PROJECT_ROOT, 'desktop.py'))
+    cmd.append(os.path.join(WINDOWS_DIR, 'desktop.py'))
+
 
     print(f"\n[*] Running PyInstaller compilation...")
     res = subprocess.run(cmd, cwd=PROJECT_ROOT)
@@ -143,11 +145,13 @@ def build_app():
     # 6. Build Inno Setup Installer (.exe) if compiler is available
     iscc = find_inno_compiler()
     installer_path = None
-    if iscc and os.path.isfile(os.path.join(PROJECT_ROOT, 'installer.iss')):
+    iss_file = os.path.join(WINDOWS_DIR, 'installer.iss')
+    if iscc and os.path.isfile(iss_file):
         print(f"\n[*] Found Inno Setup compiler: {iscc}")
         print(f"[*] Compiling professional Windows Installer wizard...")
-        iscc_cmd = [iscc, os.path.join(PROJECT_ROOT, 'installer.iss')]
+        iscc_cmd = [iscc, iss_file]
         res = subprocess.run(iscc_cmd, cwd=PROJECT_ROOT)
+
         if res.returncode == 0:
             installer_path = os.path.join(dist_dir, 'OmniDownloader-Setup-v1.0.2.exe')
             print(f" [SUCCESS] Windows Installer created: {installer_path}")
