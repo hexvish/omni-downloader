@@ -18,7 +18,9 @@ A modern, high-performance web-based universal media downloader built with Pytho
   - Explore playlist contents directly in the UI.
   - Pick and download individual tracks on demand.
 - **🎬 High-Definition Video Downloads**:
-  - Extract videos across resolutions up to 4K (2160p, 1440p, 1080p, 720p, etc.) merged into standard MP4.
+  - Extract videos across resolutions up to 4K (2160p, 1440p, 1080p, 720p, etc.) merged into standard MP4, MKV, or WEBM.
+  - **✨ 1-Click HD & 4K Unlock (YouTube)**: Seamlessly import `cookies.txt` via drag-and-drop or file picker to bypass YouTube BotGuard restrictions and unlock high-definition adaptive streams.
+  - **🚀 Uncapped Desktop Downloads**: No file size caps on the Windows desktop app—download full-length movies, documentaries, and 4K media without limits.
 - **⚡ Smart Engine & Zero-Config FFmpeg**:
   - Automatically detects system `ffmpeg` on `PATH` or uses the bundled `imageio-ffmpeg` package. No manual environment variable setup required!
 - **📊 Real-Time Progress Tracking**:
@@ -42,15 +44,17 @@ A modern, high-performance web-based universal media downloader built with Pytho
 
 ```text
 omni-downloader/
-├── app.py                  # Flask server and API route handlers
-├── desktop.py              # Native desktop window launcher (pywebview)
-├── build_standalone.py     # Standalone distribution & installer builder
-├── installer.iss           # Inno Setup Windows installer compiler script
-├── version_info.txt        # Windows PE executable metadata & version info
-├── app.ico                 # Multi-resolution application icon
-├── config.py               # Global settings & engine discovery
+├── app.py                  # Core Flask server and API route handlers
+├── config.py               # Global settings, cookie storage & engine discovery
 ├── requirements.txt        # Python dependencies
 ├── run.bat                 # One-click Windows launcher & auto-updater
+├── windows/                # Windows desktop packaging & setup wizard
+│   ├── desktop.py          # Native desktop launcher (pywebview / web fallback)
+│   ├── app.py              # Desktop Flask API handlers
+│   ├── build_standalone.py # PyInstaller standalone distribution & installer builder
+│   ├── installer.iss       # Inno Setup Windows installer compiler script
+│   ├── version_info.txt    # Windows PE executable metadata & version info
+│   └── app.ico             # Application icon
 ├── downloader/
 │   ├── engine.py           # yt-dlp & FFmpeg dynamic engine manager
 │   ├── extractor.py        # yt-dlp extraction & background task worker
@@ -61,10 +65,10 @@ omni-downloader/
 │   └── validators.py       # URL validation & input sanitization
 ├── static/
 │   ├── css/style.css       # Dedicated glassmorphism design system
-│   ├── js/app.js           # Client-side state, polling & cancel handlers
+│   ├── js/app.js           # Client-side state, polling, cancel & cookie handlers
 │   └── img/icon.png        # Official high-resolution logo artwork
 ├── templates/
-│   └── index.html          # Lightweight semantic HTML interface
+│   └── index.html          # Semantic HTML interface & HD unlock modal
 ├── downloads/              # Temporary download staging area
 └── android/                # Native Android application (Jetpack Compose + Chaquopy)
     ├── app/
@@ -92,7 +96,7 @@ Omni Downloader leverages `yt-dlp`, supporting hundreds of platforms including:
 ## ⚙️ Installation & Usage
 
 ### 📱 Android APK (Mobile)
-Download the latest **`OmniDownloader-v1.0.2.apk`** from [**Releases**](https://github.com/hexvish/omni-downloader/releases):
+Download the latest **`OmniDownloader-v1.0.3.apk`** from [**Releases**](https://github.com/hexvish/omni-downloader/releases):
 - **Native Jetpack Compose UI**: Stunning dark glassmorphism design matching the desktop application.
 - **System Share Sheet Integration**: Tap **Share** in the YouTube, Spotify, TikTok, or Instagram app and choose **Omni Downloader** to instantly analyze and download.
 - **Background Foreground Service**: Persistent live progress notifications and download speed indicator that continue when the screen is locked or while multitasking.
@@ -102,12 +106,13 @@ Download the latest **`OmniDownloader-v1.0.2.apk`** from [**Releases**](https://
 ---
 
 ### 📦 Windows Installer (Desktop)
-Download the latest **`OmniDownloader-Setup-v1.0.2.exe`** from [**Releases**](https://github.com/hexvish/omni-downloader/releases):
+Download the latest **`OmniDownloader-Setup-v1.0.3.exe`** from [**Releases**](https://github.com/hexvish/omni-downloader/releases):
 - **1-Click Setup**: Installs to your user profile without requiring administrator/UAC privileges.
 - **Self-Contained Engine**: Bundles `FFmpeg`, `yt-dlp`, and all required C++ runtimes out of the box—no manual environment setup required.
 - **Desktop & Start Menu Shortcuts**: Full Windows integration with custom application icon.
 - **Dual-Mode GUI**: Runs as a lightweight native desktop app powered by Edge WebView2 with automatic browser fallback.
 - **In-App Auto-Update Checker**: Checks GitHub releases on startup and prompts for one-click seamless upgrades.
+- **In-App HD Unlock**: Drag & drop `cookies.txt` directly into the app to unlock 1080p, 1440p, and 4K streams on restricted videos.
 
 ---
 
@@ -135,11 +140,11 @@ To compile the standalone desktop distribution and Windows Installer wizard your
    ```
 2. Run the build automation script:
    ```powershell
-   python build_standalone.py
+   python windows/build_standalone.py
    ```
 3. The compiled outputs will be available in the `dist/` directory:
-   - `dist/OmniDownloader-Setup-v1.0.2.exe` (Windows Installer wizard)
-   - `dist/OmniDownloader-v1.0.2-Windows.zip` (Portable standalone folder)
+   - `dist/OmniDownloader-Setup-v1.0.3.exe` (Windows Installer wizard)
+   - `dist/OmniDownloader-v1.0.3-Windows.zip` (Portable standalone folder)
 
 ---
 
@@ -156,7 +161,7 @@ To build the native Android APK:
    *(On Windows Command Prompt: `gradlew.bat assembleRelease`)*
 3. The signed, installable release APK will be generated at:
    - `android/app/build/outputs/apk/release/app-release.apk`
-   - Copy or rename to `OmniDownloader-v1.0.2.apk` for release.
+   - Copy or rename to `OmniDownloader-v1.0.3.apk` for release.
 
 ---
 

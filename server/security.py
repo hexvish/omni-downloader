@@ -51,7 +51,15 @@ def is_safe_url(url: str) -> tuple[bool, str]:
     if parsed.scheme.lower() not in ('http', 'https'):
         return False, "Only HTTP and HTTPS URLs are permitted."
 
-    # 2. Hostname check
+    # 2. Credential check (anti-SSRF / URL confusion)
+    if parsed.username or parsed.password:
+        return False, "URLs with embedded user credentials are not permitted."
+
+    # 3. Port check (restrict to standard HTTP/HTTPS)
+    if parsed.port is not None and parsed.port not in (80, 443):
+        return False, f"Access to port {parsed.port} is blocked. Only ports 80 and 443 are permitted."
+
+    # 4. Hostname check
     hostname = parsed.hostname
     if not hostname:
         return False, "Missing or invalid hostname in URL."
@@ -59,7 +67,7 @@ def is_safe_url(url: str) -> tuple[bool, str]:
     if hostname.lower() in BLOCKED_HOSTNAMES:
         return False, "Access to internal or metadata hostnames is forbidden."
 
-    # 3. DNS Resolution and IP range validation
+    # 5. DNS Resolution and IP range validation
     try:
         # Resolve all IPv4 and IPv6 addresses for the host
         addr_info = socket.getaddrinfo(hostname, None)
@@ -82,10 +90,12 @@ def is_safe_url(url: str) -> tuple[bool, str]:
                     return False, f"Access to private/internal network ({ip_str}) is blocked."
 
             # Extra safety checks
-            if ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local or ip_obj.is_reserved:
-                return False, f"Access to restricted IP address ({ip_str}) is blocked."
+            if (ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local or 
+                ip_obj.is_reserved or ip_obj.is_multicast or ip_obj.is_unspecified):
+                return False, f"Access to restricted/reserved IP address ({ip_str}) is blocked."
 
         except ValueError:
             return False, f"Unrecognized IP address format: {ip_str}"
 
     return True, ""
+

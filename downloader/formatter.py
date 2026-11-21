@@ -1,3 +1,7 @@
+import os
+import re
+from config import YDL_COMMON_OPTS
+
 def format_duration(seconds):
     """Format seconds into HH:MM:SS or MM:SS"""
     if not seconds:
@@ -195,7 +199,20 @@ def format_extraction_results(info, url=""):
                 
     sorted_res = sorted(video_resolutions.values(), key=lambda x: x['height'], reverse=True)
     res_list = [item['resolution'] for item in sorted_res] or ['1080p', '720p', '480p', '360p']
-        
+
+    has_cookies = bool(YDL_COMMON_OPTS.get('cookiefile') and os.path.exists(YDL_COMMON_OPTS['cookiefile']))
+    is_youtube = 'youtube' in (platform_info.get('name') or '').lower()
+
+    max_height = 0
+    for item in sorted_res:
+        h = item.get('height') or 0
+        if h > max_height:
+            max_height = h
+
+    # If YouTube without cookies only gives low resolutions (< 720p), flag as restricted
+    is_hd_restricted = is_youtube and (not has_cookies) and (max_height < 720)
+    locked_resolutions = ['720p', '1080p', '1440p (2K)', '2160p (4K)'] if is_hd_restricted else []
+
     return {
         'success': True,
         'is_playlist': False,
@@ -206,6 +223,9 @@ def format_extraction_results(info, url=""):
         'preview_url': preview_url,
         'audio_formats': AUDIO_FORMATS_CONFIG,
         'video_formats': VIDEO_CONTAINERS_CONFIG,
-        'video_resolutions': res_list
+        'video_resolutions': res_list,
+        'is_hd_restricted': is_hd_restricted,
+        'has_cookies': has_cookies,
+        'locked_resolutions': locked_resolutions
     }
 

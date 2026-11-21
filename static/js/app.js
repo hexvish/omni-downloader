@@ -282,6 +282,26 @@ function renderVideoResolutions(resList) {
         pill.onclick = (e) => selectVideoResolution(r, e.currentTarget);
         videoResRow.appendChild(pill);
     });
+
+    const hdBanner = document.getElementById('hdLockedBanner');
+    if (mediaData?.is_hd_restricted) {
+        if (hdBanner) hdBanner.style.display = 'flex';
+        const lockedRes = mediaData.locked_resolutions || ['720p', '1080p', '1440p (2K)', '2160p (4K)'];
+        lockedRes.forEach(lr => {
+            const baseRes = lr.split(' ')[0];
+            if (!resolutions.includes(baseRes) && !resolutions.includes(lr)) {
+                const lockedPill = document.createElement('button');
+                lockedPill.type = 'button';
+                lockedPill.className = 'bitrate-pill locked-pill';
+                lockedPill.innerHTML = `<span>${lr}</span> <span class="lock-icon">🔒</span>`;
+                lockedPill.onclick = () => openCookieModal();
+                lockedPill.title = 'Requires YouTube authentication/cookies for HD streaming';
+                videoResRow.appendChild(lockedPill);
+            }
+        });
+    } else {
+        if (hdBanner) hdBanner.style.display = 'none';
+    }
 }
 
 function selectVideoResolution(res, el) {
@@ -789,6 +809,8 @@ async function checkEngineStatus() {
 function initAppChecks() {
     checkEngineStatus();
     checkAppUpdates();
+    checkCookieStatus();
+    setupCookieDropZone();
 }
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
@@ -858,5 +880,171 @@ async function handleApplyAppUpdate() {
         if (btnText) btnText.textContent = 'Update Now';
         if (loader) loader.style.display = 'none';
     }
+}
+
+// --- YouTube HD Unlock & Cookie Management ---
+let hasCookies = false;
+
+async function checkCookieStatus() {
+    try {
+        const res = await fetch('/api/cookie_status');
+        if (!res.ok) return;
+        const data = await res.json();
+        hasCookies = !!data.has_cookies;
+
+        // Update modal status bar
+        const statusDot = document.getElementById('cookieStatusDot');
+        const statusText = document.getElementById('cookieStatusText');
+        const btnRemove = document.getElementById('btnRemoveCookies');
+        if (statusDot && statusText) {
+            if (hasCookies) {
+                statusDot.classList.add('active');
+                statusText.textContent = 'Cookies Active (HD & 4K Unlocked)';
+                if (btnRemove) btnRemove.style.display = 'inline-block';
+            } else {
+                statusDot.classList.remove('active');
+                statusText.textContent = 'No cookies loaded';
+                if (btnRemove) btnRemove.style.display = 'none';
+            }
+        }
+    } catch (e) {
+        // Silently skip
+    }
+}
+
+function openCookieModal() {
+    const modal = document.getElementById('cookieModal');
+    const statusDiv = document.getElementById('cookieUploadStatus');
+    if (statusDiv) {
+        statusDiv.style.display = 'none';
+        statusDiv.textContent = '';
+    }
+    if (modal) modal.style.display = 'flex';
+    checkCookieStatus();
+}
+
+function closeCookieModal() {
+    const modal = document.getElementById('cookieModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function openExtensionPage() {
+    try {
+        await fetch('/api/open_extension_page', { method: 'POST' });
+    } catch (e) {
+        window.open('https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc', '_blank');
+    }
+}
+
+function triggerCookieBrowse() {
+    const fileInput = document.getElementById('cookieFileInput');
+    if (fileInput) fileInput.click();
+}
+
+function handleCookieFileSelect(event) {
+    const file = event.target.files && event.target.files[0];
+    if (file) {
+        uploadCookieFile(file);
+    }
+}
+
+async function uploadCookieFile(file) {
+    const statusDiv = document.getElementById('cookieUploadStatus');
+    if (statusDiv) {
+        statusDiv.className = 'cookie-upload-status';
+        statusDiv.textContent = 'Importing and validating cookies...';
+        statusDiv.style.display = 'block';
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch('/api/upload_cookies', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (data.success) {
+            if (statusDiv) {
+                statusDiv.className = 'cookie-upload-status success';
+                statusDiv.textContent = '✨ Cookies active! 1080p and 4K streams unlocked.';
+            }
+            await checkCookieStatus();
+
+            // If an active URL is in the search box, re-analyze automatically to reveal unlocked HD streams
+            if (urlInput && urlInput.value.trim()) {
+                setTimeout(() => {
+                    handleFetch();
+                }, 600);
+            }
+
+            setTimeout(() => {
+                closeCookieModal();
+            }, 1800);
+        } else {
+            if (statusDiv) {
+                statusDiv.className = 'cookie-upload-status error';
+                statusDiv.textContent = data.error || 'Failed to upload cookies.';
+            }
+        }
+    } catch (e) {
+        if (statusDiv) {
+            statusDiv.className = 'cookie-upload-status error';
+            statusDiv.textContent = 'Error uploading cookies: ' + e.message;
+        }
+    }
+}
+
+async function removeCookies() {
+    const statusDiv = document.getElementById('cookieUploadStatus');
+    try {
+        const res = await fetch('/api/remove_cookies', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            if (statusDiv) {
+                statusDiv.className = 'cookie-upload-status';
+                statusDiv.textContent = 'Cookies removed.';
+                statusDiv.style.display = 'block';
+            }
+            await checkCookieStatus();
+            if (urlInput && urlInput.value.trim()) {
+                handleFetch();
+            }
+        }
+    } catch (e) {
+        if (statusDiv) {
+            statusDiv.className = 'cookie-upload-status error';
+            statusDiv.textContent = 'Error removing cookies.';
+            statusDiv.style.display = 'block';
+        }
+    }
+}
+
+function setupCookieDropZone() {
+    const dropZone = document.getElementById('cookieDropZone');
+    if (!dropZone) return;
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('dragover');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('dragover');
+        }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files.length > 0) {
+            uploadCookieFile(files[0]);
+        }
+    }, false);
 }
 

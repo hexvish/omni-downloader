@@ -16,5 +16,6 @@ server/*.db-shm
 *.migrated
 cookies.txt
 *.tmp
+*.spec
 oracle_deployment_checklist.md
 

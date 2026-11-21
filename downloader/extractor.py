@@ -129,15 +129,17 @@ def _run_single_download(task_id, url, download_type, codec, bitrate, resolution
             tasks[task_id]['random_id'] = random_id
 
     outtmpl = os.path.join(DOWNLOAD_FOLDER, f'%(title)s__{random_id}.%(ext)s')
-    effective_max_size = max_file_size if max_file_size is not None else int(os.environ.get('SERVER_MAX_FILE_SIZE', 500 * 1024 * 1024))
+    server_env_size = int(os.environ['SERVER_MAX_FILE_SIZE']) if 'SERVER_MAX_FILE_SIZE' in os.environ else None
+    effective_max_size = max_file_size if max_file_size is not None else server_env_size
 
     def progress_hook(d):
         with tasks_lock:
             if task_id in tasks and tasks[task_id].get('cancelled'):
                 raise yt_dlp.utils.DownloadCancelled("Download cancelled by user.")
         
-        # Enforce server-side file size cap actively during transfer
-        check_size_limit(d, effective_max_size, is_playlist=False)
+        # Enforce server-side file size cap actively during transfer if set
+        if effective_max_size:
+            check_size_limit(d, effective_max_size, is_playlist=False)
 
         downloaded = d.get('downloaded_bytes') or 0
         total = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
@@ -163,9 +165,10 @@ def _run_single_download(task_id, url, download_type, codec, bitrate, resolution
         **YDL_COMMON_OPTS,
         'outtmpl': outtmpl,
         'noplaylist': True,
-        'max_filesize': effective_max_size,
         'progress_hooks': [progress_hook],
     }
+    if effective_max_size:
+        ydl_opts['max_filesize'] = effective_max_size
 
 
     if download_type == 'audio':
@@ -184,10 +187,11 @@ def _run_single_download(task_id, url, download_type, codec, bitrate, resolution
             'postprocessors': postprocessors,
         })
     else:
-        try:
-            height = int(str(resolution).replace('p', ''))
+        m = re.search(r'(\d+)', str(resolution))
+        height = int(m.group(1)) if m else None
+        if height:
             fmt_str = f'bestvideo[height<={height}]+bestaudio/best[height<={height}]/best'
-        except Exception:
+        else:
             fmt_str = 'bestvideo+bestaudio/best'
 
         chosen_container = (codec or 'mp4').lower()
@@ -230,24 +234,29 @@ def _run_single_download(task_id, url, download_type, codec, bitrate, resolution
             tasks[task_id]['filename'] = matched_file
             tasks[task_id]['download_url'] = f'/get-file/{matched_file}?task_id={task_id}'
     except (yt_dlp.utils.DownloadCancelled, Exception) as e:
-        is_cancelled = False
+        is_user_cancelled = False
         with tasks_lock:
             if task_id in tasks and tasks[task_id].get('cancelled'):
-                is_cancelled = True
-        if isinstance(e, yt_dlp.utils.DownloadCancelled) or is_cancelled:
-            print(f">>> Task {task_id} cancelled by user. Cleaning up files...")
-            for f in os.listdir(DOWNLOAD_FOLDER):
-                if f"__{random_id}." in f or f"__{random_id}" in f:
-                    try:
-                        os.remove(os.path.join(DOWNLOAD_FOLDER, f))
-                    except Exception:
-                        pass
-            with tasks_lock:
+                is_user_cancelled = True
+        
+        for f in os.listdir(DOWNLOAD_FOLDER):
+            if f"__{random_id}." in f or f"__{random_id}" in f:
+                try:
+                    os.remove(os.path.join(DOWNLOAD_FOLDER, f))
+                except Exception:
+                    pass
+
+        with tasks_lock:
+            if is_user_cancelled:
+                print(f">>> Task {task_id} cancelled by user. Cleaning up files...")
                 tasks[task_id]['status'] = 'cancelled'
                 tasks[task_id]['error'] = 'Download cancelled by user.'
-        else:
-            print(f">>> Single download error for task {task_id}: {e}")
-            with tasks_lock:
+            elif isinstance(e, yt_dlp.utils.DownloadCancelled):
+                print(f">>> Task {task_id} aborted by constraint: {e}")
+                tasks[task_id]['status'] = 'cancelled'
+                tasks[task_id]['error'] = str(e)
+            else:
+                print(f">>> Single download error for task {task_id}: {e}")
                 tasks[task_id]['status'] = 'error'
                 tasks[task_id]['error'] = str(e)
 
@@ -260,8 +269,9 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
             tasks[task_id]['playlist_dir'] = playlist_dir
             tasks[task_id]['random_id'] = playlist_id
 
-    effective_max_size = max_file_size if max_file_size is not None else int(os.environ.get('SERVER_MAX_FILE_SIZE', 500 * 1024 * 1024))
-    effective_playlist_limit = max_playlist_items if max_playlist_items is not None else int(os.environ.get('SERVER_MAX_PLAYLIST_ITEMS', 15))
+    server_env_size = int(os.environ['SERVER_MAX_FILE_SIZE']) if 'SERVER_MAX_FILE_SIZE' in os.environ else None
+    effective_max_size = max_file_size if max_file_size is not None else server_env_size
+    effective_playlist_limit = max_playlist_items if max_playlist_items is not None else int(os.environ.get('SERVER_MAX_PLAYLIST_ITEMS', 50))
     bounded_total = min(initial_total or 1, effective_playlist_limit)
     track_stats = {'current_index': 1, 'total_items': bounded_total, 'completed_items': 0}
 
@@ -270,8 +280,9 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
             if task_id in tasks and tasks[task_id].get('cancelled'):
                 raise yt_dlp.utils.DownloadCancelled("Download cancelled by user.")
         
-        # Enforce file size limit during playlist track transfer
-        check_size_limit(d, effective_max_size, is_playlist=True)
+        # Enforce file size limit during playlist track transfer only if configured
+        if effective_max_size:
+            check_size_limit(d, effective_max_size, is_playlist=True)
 
         if d.get('status') == 'downloading':
             info_dict = d.get('info_dict', {})
@@ -327,12 +338,13 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
         **YDL_COMMON_OPTS,
         'outtmpl': outtmpl,
         'ignoreerrors': True,
-        'max_filesize': effective_max_size,
         'playlist_items': f'1-{effective_playlist_limit}',
         'max_downloads': effective_playlist_limit,
         'progress_hooks': [progress_hook],
         'postprocessor_hooks': [postprocessor_hook],
     }
+    if effective_max_size:
+        ydl_opts['max_filesize'] = effective_max_size
 
 
     if download_type == 'audio':
@@ -350,10 +362,11 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
             }]
         })
     else:
-        try:
-            height = int(str(resolution).replace('p', ''))
+        m = re.search(r'(\d+)', str(resolution))
+        height = int(m.group(1)) if m else None
+        if height:
             fmt_str = f'bestvideo[height<={height}]+bestaudio/best[height<={height}]/best'
-        except Exception:
+        else:
             fmt_str = 'bestvideo+bestaudio/best'
 
         chosen_container = (codec or 'mp4').lower()
@@ -434,11 +447,16 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
         with tasks_lock:
             if task_id in tasks and tasks[task_id].get('cancelled'):
                 is_cancelled = True
-        if isinstance(e, yt_dlp.utils.DownloadCancelled) or is_cancelled:
+        if is_cancelled:
             print(f">>> Playlist task {task_id} cancelled by user. Cleaned up.")
             with tasks_lock:
                 tasks[task_id]['status'] = 'cancelled'
                 tasks[task_id]['error'] = 'Download cancelled by user.'
+        elif isinstance(e, yt_dlp.utils.DownloadCancelled):
+            print(f">>> Playlist task {task_id} aborted by constraint: {e}")
+            with tasks_lock:
+                tasks[task_id]['status'] = 'cancelled'
+                tasks[task_id]['error'] = str(e)
         else:
             print(f">>> Playlist download error for task {task_id}: {e}")
             with tasks_lock:

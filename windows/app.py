@@ -19,7 +19,7 @@ else:
         sys.path.insert(0, ROOT_DIR)
 
 # Module imports
-from config import DOWNLOAD_FOLDER, APP_VERSION, GITHUB_REPO
+from config import DOWNLOAD_FOLDER, APP_VERSION, GITHUB_REPO, COOKIE_FILE, YDL_COMMON_OPTS, update_cookie_opts
 from downloader.updater import check_for_updates
 from downloader.engine import init_engine, get_engine_status
 from downloader.extractor import (
@@ -227,6 +227,70 @@ def handle_reveal_file():
             subprocess.Popen(['open', '-R', src_path])
         else:
             subprocess.Popen(['xdg-open', os.path.dirname(src_path)])
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/cookie_status', methods=['GET'])
+def handle_cookie_status():
+    """Returns whether cookies are loaded and ready."""
+    cookie_path = YDL_COMMON_OPTS.get('cookiefile')
+    has_cookies = bool(cookie_path and os.path.exists(cookie_path) and os.path.getsize(cookie_path) > 0)
+    return jsonify({
+        'success': True,
+        'has_cookies': has_cookies,
+        'cookie_path': cookie_path if has_cookies else None
+    })
+
+@app.route('/api/upload_cookies', methods=['POST'])
+def handle_upload_cookies():
+    """Saves uploaded cookies.txt or text payload to persistent storage."""
+    try:
+        content = None
+        if 'file' in request.files:
+            file_obj = request.files['file']
+            if file_obj and file_obj.filename:
+                content = file_obj.read().decode('utf-8', errors='ignore')
+        elif request.form.get('cookies'):
+            content = request.form.get('cookies')
+
+        if not content or not content.strip():
+            return jsonify({'success': False, 'error': 'No cookie data provided'}), 400
+
+        # Save to COOKIE_FILE
+        os.makedirs(os.path.dirname(COOKIE_FILE), exist_ok=True)
+        with open(COOKIE_FILE, 'w', encoding='utf-8') as f:
+            f.write(content.strip())
+
+        # Update yt-dlp config dynamically
+        update_cookie_opts(COOKIE_FILE)
+
+        return jsonify({
+            'success': True,
+            'message': 'Cookies saved and activated successfully!',
+            'cookie_path': COOKIE_FILE
+        })
+    except Exception as e:
+        print(f">>> Upload cookies error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/remove_cookies', methods=['POST'])
+def handle_remove_cookies():
+    """Deletes the stored cookie file and resets options."""
+    try:
+        if os.path.exists(COOKIE_FILE):
+            os.remove(COOKIE_FILE)
+        update_cookie_opts(None)
+        return jsonify({'success': True, 'message': 'Cookies removed successfully.'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/open_extension_page', methods=['POST'])
+def handle_open_extension_page():
+    """Opens Chrome Web Store extension page in user's default browser."""
+    try:
+        import webbrowser
+        webbrowser.open("https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc")
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

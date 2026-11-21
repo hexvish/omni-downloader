@@ -109,6 +109,20 @@
                     <div class="option-group-title">2. Choose Video Resolution</div>
                     <div class="bitrate-row" id="videoResRow"></div>
 
+                    <!-- HD Locked Banner for Restricted Videos -->
+                    <div id="hdLockedBanner" class="hd-locked-banner" style="display: none;">
+                        <div class="hd-banner-left">
+                            <span class="hd-sparkle-icon">✨</span>
+                            <div class="hd-banner-text">
+                                <strong>Higher Resolutions Locked (1080p / 4K)</strong>
+                                <p>YouTube limits unauthenticated downloads to 360p. Unlock high definition streams in 1 click.</p>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-unlock-hd-banner" onclick="openCookieModal()">
+                            <span>Unlock HD 🔓</span>
+                        </button>
+                    </div>
+
                     <!-- Action Box -->
                     <div class="action-box">
                         <div class="action-info">
@@ -161,6 +175,64 @@
                 <div id="engineProgressBar" class="progress-bar-fill" style="width: 10%;"></div>
             </div>
             <div id="engineStatusDetail" style="font-size: 0.8rem; color: #818cf8; margin-top: 10px; font-family: 'JetBrains Mono', monospace;">Downloading components...</div>
+        </div>
+    </div>
+
+    <!-- YouTube HD Unlock / Cookie Modal -->
+    <div id="cookieModal" class="engine-modal" style="display: none;">
+        <div class="cookie-modal-card">
+            <div class="cookie-modal-header">
+                <div class="cookie-modal-title-row">
+                    <span class="cookie-modal-icon">✨</span>
+                    <h3 class="cookie-modal-title">Unlock High Definition (1080p & 4K)</h3>
+                </div>
+                <button type="button" class="btn-modal-close" onclick="closeCookieModal()" title="Close">&times;</button>
+            </div>
+            
+            <p class="cookie-modal-desc">
+                YouTube requires authentication for HD & 4K streams on this video. Import cookies once to unlock 1080p and 4K downloads.
+            </p>
+
+            <div class="cookie-status-bar" id="cookieStatusRow">
+                <span class="cookie-status-indicator" id="cookieStatusDot"></span>
+                <span class="cookie-status-label" id="cookieStatusText">No cookies loaded</span>
+                <button type="button" class="btn-remove-cookies" id="btnRemoveCookies" style="display: none;" onclick="removeCookies()">Remove</button>
+            </div>
+
+            <div class="cookie-steps-grid">
+                <!-- Step 1 -->
+                <div class="cookie-step-card">
+                    <div class="cookie-step-num">Step 1</div>
+                    <div class="cookie-step-body">
+                        <h4>Get Cookie Extension</h4>
+                        <p>Install the open-source <em>Get cookies.txt locally</em> extension, visit youtube.com, and click Export.</p>
+                        <button type="button" class="btn-step-action" onclick="openExtensionPage()">
+                            <span>🌐 Open Extension Store</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="cookie-step-card">
+                    <div class="cookie-step-num">Step 2</div>
+                    <div class="cookie-step-body">
+                        <h4>Import cookies.txt</h4>
+                        <p>Drop your exported <code>cookies.txt</code> file here or browse from your computer.</p>
+                        <div class="cookie-drop-zone" id="cookieDropZone" onclick="triggerCookieBrowse()">
+                            <div class="drop-zone-icon">📁</div>
+                            <div class="drop-zone-text">Drag & drop <strong>cookies.txt</strong> here</div>
+                            <div class="drop-zone-sub">or click to browse</div>
+                            <input type="file" id="cookieFileInput" accept=".txt" style="display: none;" onchange="handleCookieFileSelect(event)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="cookieUploadStatus" class="cookie-upload-status" style="display: none;"></div>
+
+            <div class="cookie-modal-footer">
+                <button type="button" class="btn-action-secondary" onclick="closeCookieModal()">Close</button>
+            </div>
         </div>
     </div>
 
