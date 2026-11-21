@@ -6,12 +6,19 @@ import threading
 import traceback
 import webbrowser
 
-WINDOWS_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(WINDOWS_DIR)
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
-if WINDOWS_DIR not in sys.path:
-    sys.path.insert(0, WINDOWS_DIR)
+if getattr(sys, 'frozen', False):
+    base_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+    exe_dir = os.path.dirname(sys.executable)
+    for p in (base_dir, exe_dir, os.path.join(base_dir, '_internal'), os.path.join(exe_dir, '_internal')):
+        if os.path.exists(p) and p not in sys.path:
+            sys.path.insert(0, p)
+else:
+    WINDOWS_DIR = os.path.dirname(os.path.abspath(__file__))
+    ROOT_DIR = os.path.dirname(WINDOWS_DIR)
+    if ROOT_DIR not in sys.path:
+        sys.path.insert(0, ROOT_DIR)
+    if WINDOWS_DIR not in sys.path:
+        sys.path.insert(0, WINDOWS_DIR)
 
 from app import app
 from downloader.engine import init_engine

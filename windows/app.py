@@ -7,9 +7,16 @@ import threading
 from flask import Flask, render_template, request, jsonify, send_from_directory
 
 # Ensure repository root is on sys.path for shared core imports
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
+if getattr(sys, 'frozen', False):
+    base_dir = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+    exe_dir = os.path.dirname(sys.executable)
+    for p in (base_dir, exe_dir, os.path.join(base_dir, '_internal'), os.path.join(exe_dir, '_internal')):
+        if os.path.exists(p) and p not in sys.path:
+            sys.path.insert(0, p)
+else:
+    ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if ROOT_DIR not in sys.path:
+        sys.path.insert(0, ROOT_DIR)
 
 # Module imports
 from config import DOWNLOAD_FOLDER, APP_VERSION, GITHUB_REPO

@@ -70,11 +70,18 @@ def build_app():
         '--noconsole',
         '--onedir',
         '--name', 'OmniDownloader',
-        '--add-data', f'{os.path.join(PROJECT_ROOT, "templates")}{sep}templates',
-        '--add-data', f'{os.path.join(PROJECT_ROOT, "static")}{sep}static',
+        '--paths', PROJECT_ROOT,
+        '--paths', WINDOWS_DIR,
+        '--hidden-import', 'config',
+        '--hidden-import', 'app',
+        '--collect-all', 'downloader',
+        '--collect-all', 'utils',
         '--collect-all', 'webview',
         '--collect-all', 'yt_dlp',
         '--collect-all', 'imageio_ffmpeg',
+        '--add-data', f'{os.path.join(PROJECT_ROOT, "templates")}{sep}templates',
+        '--add-data', f'{os.path.join(PROJECT_ROOT, "static")}{sep}static',
+        '--add-data', f'{os.path.join(PROJECT_ROOT, "config.py")}{sep}.',
         '--distpath', dist_dir,
         '--workpath', build_dir,
         '--clean',
@@ -126,11 +133,13 @@ def build_app():
         except Exception as e:
             print(f"[!] Warning copying {name}: {e}")
 
-    # Copy README.md, LICENSE, and app.ico
-    for f in ('README.md', 'LICENSE', 'app.ico'):
+    # Copy config.py, README.md, LICENSE, and app.ico
+    for f in ('config.py', 'README.md', 'LICENSE', 'app.ico'):
         src = os.path.join(PROJECT_ROOT, f)
         if os.path.exists(src):
             shutil.copy2(src, output_app_dir)
+            if os.path.isdir(internal_dir):
+                shutil.copy2(src, internal_dir)
 
     # 5. Create ready-to-distribute ZIP archive
     zip_output_path = os.path.join(dist_dir, 'OmniDownloader-v1.0.3-Windows.zip')
