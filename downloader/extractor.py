@@ -139,6 +139,9 @@ def _run_single_download(task_id, url, download_type, codec, bitrate, resolution
         # Enforce server-side file size cap actively during transfer
         check_size_limit(d, effective_max_size, is_playlist=False)
 
+        downloaded = d.get('downloaded_bytes') or 0
+        total = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
+
         if d.get('status') == 'downloading':
             speed = d.get('speed') or 0
             speed_str = f"{round(speed / (1024*1024), 1)} MB/s" if speed else ""
