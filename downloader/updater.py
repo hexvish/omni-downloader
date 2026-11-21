@@ -7,6 +7,10 @@ def check_for_updates():
         print(">>> yt-dlp auto-update is disabled.")
         return
 
+    # In a frozen PyInstaller binary, pip is not available inside the executable
+    if getattr(sys, 'frozen', False):
+        return
+
     print(">>> yt-dlp update check started...")
     try:
         subprocess.check_call([sys.executable, "-m", "pip", "install", "-U", "yt-dlp"])

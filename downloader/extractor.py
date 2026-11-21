@@ -108,20 +108,38 @@ def cleanup_playlist_directory(playlist_dir, fallback_ext='mp4'):
                     except Exception:
                         pass
 
-def _run_single_download(task_id, url, download_type, codec, bitrate, resolution):
+def check_size_limit(d, max_file_size, is_playlist=False):
+    """
+    Checks if a download chunk exceeds the maximum file size limit.
+    Raises yt_dlp.utils.DownloadCancelled if downloaded or total bytes exceed limit.
+    """
+    if not max_file_size:
+        return
+    downloaded = d.get('downloaded_bytes') or 0
+    total = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
+    if downloaded > max_file_size or total > max_file_size:
+        max_mb = round(max_file_size / (1024 * 1024))
+        entity = "track" if is_playlist else "file"
+        raise yt_dlp.utils.DownloadCancelled(f"Download aborted: {entity} exceeds maximum allowed size ({max_mb} MB).")
+
+def _run_single_download(task_id, url, download_type, codec, bitrate, resolution, max_file_size=None):
     random_id = secrets.token_hex(4)
     with tasks_lock:
         if task_id in tasks:
             tasks[task_id]['random_id'] = random_id
+
     outtmpl = os.path.join(DOWNLOAD_FOLDER, f'%(title)s__{random_id}.%(ext)s')
+    effective_max_size = max_file_size if max_file_size is not None else int(os.environ.get('SERVER_MAX_FILE_SIZE', 500 * 1024 * 1024))
 
     def progress_hook(d):
         with tasks_lock:
             if task_id in tasks and tasks[task_id].get('cancelled'):
                 raise yt_dlp.utils.DownloadCancelled("Download cancelled by user.")
+        
+        # Enforce server-side file size cap actively during transfer
+        check_size_limit(d, effective_max_size, is_playlist=False)
+
         if d.get('status') == 'downloading':
-            total = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
-            downloaded = d.get('downloaded_bytes') or 0
             speed = d.get('speed') or 0
             speed_str = f"{round(speed / (1024*1024), 1)} MB/s" if speed else ""
             pct = min(98.0, round((downloaded / total) * 100, 1)) if total > 0 else 50.0
@@ -142,8 +160,10 @@ def _run_single_download(task_id, url, download_type, codec, bitrate, resolution
         **YDL_COMMON_OPTS,
         'outtmpl': outtmpl,
         'noplaylist': True,
+        'max_filesize': effective_max_size,
         'progress_hooks': [progress_hook],
     }
+
 
     if download_type == 'audio':
         chosen_codec = (codec or 'mp3').lower()
@@ -205,7 +225,7 @@ def _run_single_download(task_id, url, download_type, codec, bitrate, resolution
             tasks[task_id]['status'] = 'completed'
             tasks[task_id]['progress'] = 100.0
             tasks[task_id]['filename'] = matched_file
-            tasks[task_id]['download_url'] = f'/get-file/{matched_file}'
+            tasks[task_id]['download_url'] = f'/get-file/{matched_file}?task_id={task_id}'
     except (yt_dlp.utils.DownloadCancelled, Exception) as e:
         is_cancelled = False
         with tasks_lock:
@@ -228,24 +248,32 @@ def _run_single_download(task_id, url, download_type, codec, bitrate, resolution
                 tasks[task_id]['status'] = 'error'
                 tasks[task_id]['error'] = str(e)
 
-def _run_playlist_download(task_id, url, download_type, codec, bitrate, resolution, initial_total=1):
+def _run_playlist_download(task_id, url, download_type, codec, bitrate, resolution, initial_total=1, max_file_size=None, max_playlist_items=None):
     playlist_id = secrets.token_hex(4)
     playlist_dir = os.path.join(DOWNLOAD_FOLDER, f"playlist_{playlist_id}")
     os.makedirs(playlist_dir, exist_ok=True)
     with tasks_lock:
         if task_id in tasks:
             tasks[task_id]['playlist_dir'] = playlist_dir
+            tasks[task_id]['random_id'] = playlist_id
 
-    track_stats = {'current_index': 1, 'total_items': initial_total or 1, 'completed_items': 0}
+    effective_max_size = max_file_size if max_file_size is not None else int(os.environ.get('SERVER_MAX_FILE_SIZE', 500 * 1024 * 1024))
+    effective_playlist_limit = max_playlist_items if max_playlist_items is not None else int(os.environ.get('SERVER_MAX_PLAYLIST_ITEMS', 15))
+    bounded_total = min(initial_total or 1, effective_playlist_limit)
+    track_stats = {'current_index': 1, 'total_items': bounded_total, 'completed_items': 0}
 
     def progress_hook(d):
         with tasks_lock:
             if task_id in tasks and tasks[task_id].get('cancelled'):
                 raise yt_dlp.utils.DownloadCancelled("Download cancelled by user.")
+        
+        # Enforce file size limit during playlist track transfer
+        check_size_limit(d, effective_max_size, is_playlist=True)
+
         if d.get('status') == 'downloading':
             info_dict = d.get('info_dict', {})
             idx = info_dict.get('playlist_index') or track_stats['current_index']
-            total = info_dict.get('n_entries') or track_stats['total_items']
+            total = min(info_dict.get('n_entries') or track_stats['total_items'], effective_playlist_limit)
             track_stats['current_index'] = idx
             track_stats['total_items'] = total
             track_stats['completed_items'] = max(track_stats['completed_items'], idx - 1)
@@ -296,9 +324,13 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
         **YDL_COMMON_OPTS,
         'outtmpl': outtmpl,
         'ignoreerrors': True,
+        'max_filesize': effective_max_size,
+        'playlist_items': f'1-{effective_playlist_limit}',
+        'max_downloads': effective_playlist_limit,
         'progress_hooks': [progress_hook],
         'postprocessor_hooks': [postprocessor_hook],
     }
+
 
     if download_type == 'audio':
         chosen_codec = (codec or 'mp3').lower()
@@ -387,7 +419,7 @@ def _run_playlist_download(task_id, url, download_type, codec, bitrate, resoluti
             tasks[task_id]['progress'] = 100.0
             tasks[task_id]['completed_items'] = track_stats['total_items']
             tasks[task_id]['filename'] = zip_filename
-            tasks[task_id]['download_url'] = f'/get-file/{zip_filename}'
+            tasks[task_id]['download_url'] = f'/get-file/{zip_filename}?task_id={task_id}'
     except (yt_dlp.utils.DownloadCancelled, Exception) as e:
         shutil.rmtree(playlist_dir, ignore_errors=True)
         if 'zip_path' in locals() and os.path.exists(zip_path):
@@ -445,7 +477,7 @@ def cancel_task(task_id):
             return True
     return False
 
-def start_download_task(url, download_type='audio', codec='mp3', bitrate='320', resolution='1080p', is_playlist=False, total_items=1):
+def start_download_task(url, download_type='audio', codec='mp3', bitrate='320', resolution='1080p', is_playlist=False, total_items=1, session_id=None, max_file_size=None, max_playlist_items=None):
     """
     Start an asynchronous download task in a background worker thread.
     Returns the unique task_id.
@@ -455,6 +487,7 @@ def start_download_task(url, download_type='audio', codec='mp3', bitrate='320', 
     with tasks_lock:
         tasks[task_id] = {
             'task_id': task_id,
+            'session_id': session_id,
             'status': 'starting',
             'progress': 0.0,
             'current_item': 1,
@@ -464,6 +497,7 @@ def start_download_task(url, download_type='audio', codec='mp3', bitrate='320', 
             'speed': '',
             'is_playlist': is_playlist,
             'filename': None,
+            'random_id': None,
             'download_url': None,
             'error': None,
             'created_at': time.time()
@@ -472,18 +506,35 @@ def start_download_task(url, download_type='audio', codec='mp3', bitrate='320', 
     if is_playlist:
         worker = threading.Thread(
             target=_run_playlist_download,
-            args=(task_id, url, download_type, codec, bitrate, resolution, initial_total),
+            args=(task_id, url, download_type, codec, bitrate, resolution, initial_total, max_file_size, max_playlist_items),
             daemon=True
         )
     else:
         worker = threading.Thread(
             target=_run_single_download,
-            args=(task_id, url, download_type, codec, bitrate, resolution),
+            args=(task_id, url, download_type, codec, bitrate, resolution, max_file_size),
             daemon=True
         )
 
     worker.start()
     return task_id
+
+def get_active_task_identifiers():
+    """
+    Returns a set of active task markers (filenames, random_ids, playlist folders)
+    that must be strictly protected from deletion by cleanup workers.
+    """
+    active_markers = set()
+    with tasks_lock:
+        for t in tasks.values():
+            if t.get('status') in ('starting', 'pending', 'downloading', 'converting', 'processing'):
+                if t.get('filename'):
+                    active_markers.add(t['filename'])
+                if t.get('random_id'):
+                    active_markers.add(t['random_id'])
+                if t.get('playlist_dir'):
+                    active_markers.add(os.path.basename(t['playlist_dir']))
+    return active_markers
 
 def get_task_status(task_id):
     """Retrieve current task execution state"""
@@ -492,6 +543,7 @@ def get_task_status(task_id):
         if not task:
             return None
         return dict(task)
+
 
 def download_media(url, format_id, download_type):
     """Synchronous download helper for backward compatibility"""

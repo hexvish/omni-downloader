@@ -1,8 +1,8 @@
-; Inno Setup Script for Omni Downloader v1.0.2
+; Inno Setup Script for Omni Downloader v1.0.3
 ; High-performance, portable-ready installer with zero-admin requirements
 
 #define MyAppName "Omni Downloader"
-#define MyAppVersion "1.0.2"
+#define MyAppVersion "1.0.3"
 #define MyAppPublisher "Omni Downloader"
 #define MyAppURL "https://github.com/hexvish/omni-downloader"
 #define MyAppExeName "OmniDownloader.exe"
@@ -17,6 +17,7 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
+SourceDir=..
 
 ; Install to User's Local AppData (requires NO administrator/UAC elevation)
 DefaultDirName={localappdata}\Programs\OmniDownloader

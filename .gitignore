@@ -10,6 +10,10 @@ dist/
 .env
 .DS_Store
 server/sessions.json
+server/*.db
+server/*.db-wal
+server/*.db-shm
+*.migrated
 cookies.txt
 *.tmp
 oracle_deployment_checklist.md
