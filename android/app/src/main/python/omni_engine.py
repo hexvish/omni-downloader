@@ -5,6 +5,17 @@ import re
 import yt_dlp
 from yt_dlp.utils import sanitize_filename
 
+YDL_BASE_OPTS = {
+    'quiet': True,
+    'no_warnings': True,
+    'socket_timeout': 20,
+    'extractor_args': {
+        'youtube': {
+            'player_client': ['android', 'ios', 'web']
+        }
+    }
+}
+
 def extract_media_info(url):
     """
     Extracts metadata, formats, and playlist details using yt-dlp across multiple platforms.
@@ -12,12 +23,9 @@ def extract_media_info(url):
     """
     is_playlist_url = ('list=' in url or '/playlist' in url)
     ydl_opts = {
-        'quiet': True,
-        'no_warnings': True,
+        **YDL_BASE_OPTS,
         'ignoreerrors': True,
-        'socket_timeout': 20,
         'extract_flat': is_playlist_url,
-        'user_agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
     }
 
     try:
@@ -131,14 +139,12 @@ def _download_single_audio(clean_url, output_dir, progress_listener):
                     pass
 
     ydl_opts = {
+        **YDL_BASE_OPTS,
         'format': 'bestaudio[ext=m4a]/bestaudio/best',
         'outtmpl': outtmpl,
-        'quiet': True,
-        'no_warnings': True,
         'noplaylist': True,
         'progress_hooks': [hook],
         'restrictfilenames': False,
-        'user_agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
     }
 
     try:
@@ -178,11 +184,9 @@ def _download_single_video(clean_url, output_dir, progress_listener):
     """
     # 1. Probe available formats
     probe_opts = {
-        'quiet': True,
-        'no_warnings': True,
+        **YDL_BASE_OPTS,
         'noplaylist': True,
         'socket_timeout': 15,
-        'user_agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
     }
 
     with yt_dlp.YoutubeDL(probe_opts) as ydl_probe:
@@ -210,14 +214,12 @@ def _download_single_video(clean_url, output_dir, progress_listener):
                         pass
 
         ydl_opts = {
+            **YDL_BASE_OPTS,
             'format': 'best[acodec!=none][vcodec!=none]/best',
             'outtmpl': outtmpl,
-            'quiet': True,
-            'no_warnings': True,
             'noplaylist': True,
             'progress_hooks': [hook],
             'restrictfilenames': False,
-            'user_agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             dl_info = ydl.extract_info(clean_url, download=True)
@@ -276,23 +278,19 @@ def _download_single_video(clean_url, output_dir, progress_listener):
                     pass
 
     vid_opts = {
+        **YDL_BASE_OPTS,
         'format': 'bestvideo[ext=mp4][vcodec^=avc1]/bestvideo[ext=mp4]/bestvideo',
         'outtmpl': temp_vid,
-        'quiet': True,
-        'no_warnings': True,
         'noplaylist': True,
         'progress_hooks': [hook_vid],
-        'user_agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
     }
 
     aud_opts = {
+        **YDL_BASE_OPTS,
         'format': 'bestaudio[ext=m4a][acodec^=mp4a]/bestaudio[ext=m4a]/bestaudio',
         'outtmpl': temp_aud,
-        'quiet': True,
-        'no_warnings': True,
         'noplaylist': True,
         'progress_hooks': [hook_aud],
-        'user_agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
     }
 
     try:
@@ -345,10 +343,9 @@ def _download_single_video(clean_url, output_dir, progress_listener):
 
 def _download_playlist(url, download_type, output_dir, progress_listener, selected_indices=None):
     ydl_opts_meta = {
-        'quiet': True,
+        **YDL_BASE_OPTS,
         'extract_flat': True,
         'ignoreerrors': True,
-        'socket_timeout': 20,
     }
 
     try:
